@@ -16,15 +16,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import com.example.ecopoints.app.data.remote.FirebaseBackupRepository
-import com.example.ecopoints.app.data.local.CloudPreferences
-
-data class CloudUiState(val busy: Boolean = false, val message: String? = null, val lastBackup: Long = 0L)
+import com.example.ecopoints.app.data.remote.CloudSyncCoordinator
 
 data class SettingsUiState(
     val userName: String = "EcoAmigo",
@@ -36,43 +28,10 @@ data class SettingsUiState(
 class SettingsViewModel(
     private val settingsRepository: SettingsRepository,
     userRepository: UserRepository,
-    private val cloud: FirebaseBackupRepository,
-    private val cloudPreferences: CloudPreferences
+    sync: CloudSyncCoordinator
 ) : ViewModel() {
-    val firebaseConfigured = cloud.configured
-    private val _cloudState = MutableStateFlow(CloudUiState())
-    val cloudState = _cloudState.asStateFlow()
-
-    init {
-        viewModelScope.launch {
-            settingsRepository.sessionUserId.collect { id ->
-                _cloudState.value = CloudUiState(lastBackup = id?.let(cloudPreferences::lastBackup) ?: 0L)
-            }
-        }
-    }
-
-    fun transfer(restore: Boolean = false) {
-        if (_cloudState.value.busy) return
-        _cloudState.value = _cloudState.value.copy(busy = true, message = null)
-        viewModelScope.launch {
-            try {
-                val userId = settingsRepository.sessionUserId.first()
-                val message = cloud.transfer(restore)
-                if (!restore && userId != null) cloudPreferences.recordBackup(userId)
-                _cloudState.value = CloudUiState(message = message, lastBackup = userId?.let(cloudPreferences::lastBackup) ?: 0L)
-            } catch (error: Exception) {
-                if (error is CancellationException && error !is TimeoutCancellationException) throw error
-                val message = when (error) {
-                    is TimeoutCancellationException -> "La conexión tardó demasiado. Revisa tu internet y reintenta."
-                    is IllegalStateException -> "Cierra sesión e inicia sesión con tu cuenta Firebase para respaldar."
-                    is com.google.firebase.auth.FirebaseAuthException -> "No se pudo autenticar en Firebase. Revisa tus credenciales y que Correo/contraseña esté habilitado."
-                    is com.google.firebase.firestore.FirebaseFirestoreException -> "No se pudo acceder a Firestore. Revisa internet y las reglas del proyecto."
-                    else -> "No se pudo completar la operación. Revisa la configuración y el formato del respaldo."
-                }
-                _cloudState.value = _cloudState.value.copy(busy = false, message = message)
-            }
-        }
-    }
+    val firebaseConfigured = sync.configured
+    val cloudState = sync.state
 
     private val userName: Flow<String> = settingsRepository.sessionUserId.flatMapLatest { userId ->
         if (userId == null) flowOf("EcoAmigo") else userRepository.observeUser(userId).map { it?.name ?: "EcoAmigo" }

@@ -66,6 +66,9 @@ fun WelcomeScreen(
     onLoggedOut: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val closing by viewModel.signingOut.collectAsStateWithLifecycle()
+    val logoutError by viewModel.logoutError.collectAsStateWithLifecycle()
+    if (closing) com.example.ecopoints.app.ui.components.SavingSessionDialog()
 
     if (state.isLoading) {
         Box(
@@ -271,6 +274,7 @@ fun WelcomeScreen(
                             Text("Cerrar sesión", fontSize = 12.sp, color = EcoError)
                         }
                     }
+                    logoutError?.let { Text(it, color = EcoError, fontSize = 13.sp) }
                 }
             }
         }

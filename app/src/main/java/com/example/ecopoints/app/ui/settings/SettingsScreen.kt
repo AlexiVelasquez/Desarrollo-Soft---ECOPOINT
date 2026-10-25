@@ -36,11 +36,6 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
@@ -62,7 +57,7 @@ import com.example.ecopoints.app.ui.theme.EcoTextPrimary
 
 /**
  * Ajustes de EcoPoints. Cada cambio se guarda al instante en DataStore mediante [SettingsViewModel];
- * "Guardar y Volver" solo regresa a la pantalla anterior.
+ * "Volver" regresa a la pantalla anterior.
  */
 @Composable
 fun SettingsScreen(
@@ -73,20 +68,6 @@ fun SettingsScreen(
     val settings = state.settings
     val context = LocalContext.current
     val cloud by viewModel.cloudState.collectAsStateWithLifecycle()
-    var confirmRestore by remember { mutableStateOf(false) }
-
-    if (confirmRestore) {
-        AlertDialog(
-            onDismissRequest = { confirmRestore = false },
-            title = { Text("Restaurar respaldo") },
-            text = { Text("Se reemplazarán tu progreso, mascota, retos, logros, historial y ajustes locales por el respaldo. Las fotos no se restauran.") },
-            confirmButton = { TextButton(onClick = {
-                confirmRestore = false
-                viewModel.transfer(restore = true)
-            }) { Text("Restaurar") } },
-            dismissButton = { TextButton(onClick = { confirmRestore = false }) { Text("Cancelar") } }
-        )
-    }
 
     Column(
         modifier = Modifier
@@ -115,17 +96,12 @@ fun SettingsScreen(
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        SettingsSection("Base de datos Firebase") {
-            Text(if (viewModel.firebaseConfigured) "Tu sesión está vinculada a Firebase. Guarda tus cambios para recuperarlos al iniciar sesión en otro dispositivo." else "Firebase pendiente de configuración. Agrega google-services.json y recompila.", fontSize = 13.sp, color = EcoTextPrimary)
-            if (cloud.lastBackup > 0) {
-                Text("Último respaldo: " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(cloud.lastBackup)), fontSize = 12.sp)
+        SettingsSection("Sincronización de cuenta") {
+            Text(if (viewModel.firebaseConfigured) "Tus cambios se guardan automáticamente y se recuperan al iniciar sesión en otro dispositivo." else "Configura Firebase para sincronizar tu cuenta.", fontSize = 13.sp, color = EcoTextPrimary)
+            Text(cloud.message, fontSize = 13.sp, color = EcoTextPrimary)
+            if (cloud.lastSync > 0) {
+                Text("Última sincronización: " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(cloud.lastSync)), fontSize = 12.sp)
             }
-            val cloudEnabled = viewModel.firebaseConfigured && !cloud.busy
-            Button(onClick = { viewModel.transfer() }, enabled = cloudEnabled, modifier = Modifier.fillMaxWidth()) {
-                Text(if (cloud.busy) "Procesando…" else "Guardar respaldo")
-            }
-            TextButton(onClick = { confirmRestore = true }, enabled = cloudEnabled) { Text("Restaurar desde Firebase") }
-            cloud.message?.let { Text(it, fontSize = 13.sp, color = EcoTextPrimary) }
         }
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -166,7 +142,7 @@ fun SettingsScreen(
                 checked = settings.challengeRemindersEnabled,
                 onCheckedChange = {
                     viewModel.setChallengeReminders(it)
-                    Toast.makeText(context, "Ajuste guardado en DataStore", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Preferencia actualizada", Toast.LENGTH_SHORT).show()
                 }
             )
             SettingSwitchRow(
@@ -226,7 +202,7 @@ fun SettingsScreen(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
         ) {
-            Text("Guardar y Volver", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text("Volver", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
         }
     }
 }

@@ -14,12 +14,11 @@ import com.google.firebase.firestore.Source
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import java.util.Date
+import java.security.MessageDigest
 
 data class FirebaseAccount(val uid: String, val email: String, val name: String?)
 
@@ -28,7 +27,8 @@ class FirebaseBackupRepository(
     context: Context,
     private val database: EcoDatabase,
     private val settings: SettingsRepository,
-    firebaseApp: FirebaseApp? = FirebaseApp.initializeApp(context.applicationContext)
+    firebaseApp: FirebaseApp? = FirebaseApp.initializeApp(context.applicationContext),
+    private val writeTimeoutMillis: Long = 30_000
 ) {
     private val app = firebaseApp
     val configured: Boolean get() = app != null
@@ -36,7 +36,6 @@ class FirebaseBackupRepository(
         "Falta configurar Firebase. Agrega app/google-services.json y recompila."
     })
     private val firestore get() = FirebaseFirestore.getInstance(checkNotNull(app))
-    private val mutex = Mutex()
     private val gson = Gson()
 
     fun isSignedInAs(email: String): Boolean = configured && auth.currentUser?.email.equals(email, ignoreCase = true)
@@ -115,12 +114,16 @@ class FirebaseBackupRepository(
         check(matchesIdentity(user.firebaseUid)) { "Vuelve a iniciar sesión para vincular esta cuenta." }
         backup.validate(user.email)
         database.withTransaction {
+            val localChallenges = database.challengeDao().getAll(userId)
             backup.profileName?.takeIf { it.isNotBlank() }?.let { database.userDao().updateProfile(userId, it, user.email) }
             database.progressDao().upsert(backup.progress.copy(userId = userId))
             database.petDao().upsert(backup.pet.copy(userId = userId))
             database.challengeDao().deleteAll(userId)
             backup.challenges.forEach {
-                database.challengeDao().insert(it.copy(id = 0, userId = userId, evidencePath = "", remindedDeadline = 0))
+                val localEvidence = localChallenges.firstOrNull { local -> local.title == it.title &&
+                    local.startMillis == it.startMillis && local.completedMillis == it.completedMillis }
+                    ?.evidencePath?.takeIf { path -> path.isNotEmpty() && java.io.File(path).exists() }.orEmpty()
+                database.challengeDao().insert(it.copy(id = 0, userId = userId, evidencePath = localEvidence, remindedDeadline = 0))
             }
             database.achievementDao().deleteAll(userId)
             database.achievementDao().insertAll(backup.achievements.map { it.copy(userId = userId) })
@@ -130,45 +133,42 @@ class FirebaseBackupRepository(
         settings.restorePreferences(backup.settings)
     }
 
-    suspend fun saveForUser(userId: Long) = withContext(Dispatchers.IO) {
-        withTimeout(30_000) {
+    private suspend fun localBackup(userId: Long): CloudBackup {
+        val preferences = settings.settings.first()
+        return database.withTransaction {
+            val user = checkNotNull(database.userDao().findById(userId))
+            CloudBackup(
+                1, user.email,
+                checkNotNull(database.progressDao().get(userId)), checkNotNull(database.petDao().get(userId)),
+                database.challengeDao().getAll(userId).map { it.copy(evidencePath = "", remindedDeadline = 0) },
+                database.achievementDao().getAll(userId), database.activityLogDao().getAll(userId),
+                preferences, user.name
+            )
+        }
+    }
+
+    private fun fingerprint(backup: CloudBackup): String = MessageDigest.getInstance("SHA-256")
+        .digest(gson.toJson(backup).toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+
+    suspend fun localFingerprint(userId: Long): String = fingerprint(localBackup(userId))
+
+    /** Devuelve la huella de la versión confirmada por el servidor. */
+    suspend fun saveForUser(userId: Long): String = withContext(Dispatchers.IO) {
+        withTimeout(writeTimeoutMillis) {
             val user = checkNotNull(database.userDao().findById(userId))
             check(matchesIdentity(user.firebaseUid)) { "Vuelve a iniciar sesión para vincular esta cuenta." }
             val target = document(user.email)
-            val preferences = settings.settings.first()
-            val backup = database.withTransaction {
-                CloudBackup(
-                    1, user.email,
-                    checkNotNull(database.progressDao().get(userId)), checkNotNull(database.petDao().get(userId)),
-                    database.challengeDao().getAll(userId).map { it.copy(evidencePath = "", remindedDeadline = 0) },
-                    database.achievementDao().getAll(userId), database.activityLogDao().getAll(userId),
-                    preferences, user.name
-                )
-            }
+            val backup = localBackup(userId)
             backup.validate(user.email)
             val payload = gson.toJson(backup)
             require(payload.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Respaldo demasiado grande" }
             // Un registro correcto confirma perfil y respaldo en una sola escritura atómica.
-            val profile = profileData(user, backup.pet)
+            val profile = profileData(user.copy(name = backup.profileName ?: user.name), backup.pet)
             firestore.batch()
                 .set(firestore.collection("users").document(checkNotNull(user.firebaseUid)), profile)
                 .set(target, mapOf("version" to 1, "payload" to payload, "updatedAt" to FieldValue.serverTimestamp()))
                 .commit().await()
-            Unit
-        }
-    }
-
-    suspend fun transfer(restore: Boolean): String = mutex.withLock {
-        val userId = checkNotNull(settings.sessionUserId.first()) { "Inicia sesión primero" }
-        val user = checkNotNull(database.userDao().findById(userId))
-        if (restore) {
-            val backup = checkNotNull(readBackup(user.email)) { "No hay respaldo para esta cuenta" }
-            check(settings.sessionUserId.first() == userId) { "La sesión cambió. Reintenta." }
-            restoreForUser(userId, backup)
-            "Respaldo restaurado. Las fotos de evidencia permanecen en su dispositivo original."
-        } else {
-            saveForUser(userId)
-            "Respaldo guardado en Firebase"
+            fingerprint(backup)
         }
     }
 

@@ -34,6 +34,7 @@ data class LoginUiState(
 
 /** Eventos de una sola vez que la pantalla convierte en navegación o avisos. */
 sealed interface LoginEvent {
+    data object Continued : LoginEvent
     data class LoggedIn(val isNewUser: Boolean) : LoginEvent
     data class PasswordResetSent(val email: String) : LoginEvent
 }
@@ -86,6 +87,22 @@ class LoginViewModel(
                 LoginResult.WrongPassword -> form.update {
                     it.copy(isLoading = false, error = "Contraseña incorrecta")
                 }
+            }
+        }
+    }
+
+    fun continueSession() {
+        if (form.value.isLoading) return
+        viewModelScope.launch {
+            form.update { it.copy(isLoading = true, error = null) }
+            try {
+                userRepository.continueSession()
+                _events.send(LoginEvent.Continued)
+            } catch (error: Exception) {
+                error.rethrowCancellation()
+                form.update { it.copy(error = error.remoteMessage()) }
+            } finally {
+                form.update { it.copy(isLoading = false) }
             }
         }
     }

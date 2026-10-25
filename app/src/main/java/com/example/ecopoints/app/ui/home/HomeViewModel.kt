@@ -32,9 +32,13 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
+import com.example.ecopoints.app.data.remote.rethrowCancellation
 
 /** Todo lo que dibuja el panel principal. Los valores derivados (nivel, etapa, ánimo) se calculan aquí. */
 data class HomeUiState(
+    val signingOut: Boolean = false,
     val isLoading: Boolean = true,
     val userName: String = "",
     val petSpecies: String = PetSpecies.DEFAULT,
@@ -75,7 +79,7 @@ sealed interface HomeEvent {
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModel(
-    userRepository: UserRepository,
+    private val userRepository: UserRepository,
     private val progressRepository: ProgressRepository,
     private val petRepository: PetRepository,
     private val challengeRepository: ChallengeRepository,
@@ -85,12 +89,21 @@ class HomeViewModel(
 
     /** Diálogos y acciones en curso: no vienen de la base de datos, viven solo mientras se usa la pantalla. */
     private data class Overlay(
+        val signingOut: Boolean = false,
         val dailyVisit: DailyVisit? = null,
         val newAchievements: List<Achievement> = emptyList(),
         val pendingAction: PetAction? = null
     )
 
     private val overlay = MutableStateFlow(Overlay())
+    private val mutations = mutableSetOf<Job>()
+
+    private fun launchMutation(block: suspend () -> Unit) {
+        if (overlay.value.signingOut) return
+        val job = viewModelScope.launch { block() }
+        mutations.add(job)
+        job.invokeOnCompletion { mutations.remove(job) }
+    }
 
     private val data: Flow<HomeUiState> = settingsRepository.sessionUserId
         .filterNotNull()
@@ -128,6 +141,7 @@ class HomeViewModel(
 
     val uiState: StateFlow<HomeUiState> = combine(data, overlay) { state, extra ->
         state.copy(
+            signingOut = extra.signingOut,
             dailyVisit = extra.dailyVisit,
             newAchievements = extra.newAchievements,
             pendingAction = extra.pendingAction
@@ -140,7 +154,7 @@ class HomeViewModel(
     init {
         // Al abrir el panel: se descuenta el desgaste acumulado, se registra la visita del día
         // (bono y racha) y se revisan los logros.
-        viewModelScope.launch {
+        launchMutation {
             val userId = settingsRepository.sessionUserId.filterNotNull().first()
             petRepository.applyDecay(userId)
             val visit = progressRepository.registerDailyVisit(userId)
@@ -151,8 +165,8 @@ class HomeViewModel(
 
     /** Con la pantalla abierta las barras bajan en vivo (la pantalla llama a esto cada 5 s). */
     fun tickDecay() {
-        viewModelScope.launch {
-            val userId = settingsRepository.sessionUserId.first() ?: return@launch
+        launchMutation {
+            val userId = settingsRepository.sessionUserId.first() ?: return@launchMutation
             petRepository.applyDecay(userId)
         }
     }
@@ -185,8 +199,8 @@ class HomeViewModel(
     }
 
     private fun perform(action: PetAction) {
-        viewModelScope.launch {
-            val userId = settingsRepository.sessionUserId.first() ?: return@launch
+        launchMutation {
+            val userId = settingsRepository.sessionUserId.first() ?: return@launchMutation
             val name = uiState.value.petDisplayName
             when (petRepository.perform(userId, action)) {
                 PetActionResult.Done -> {
@@ -218,32 +232,32 @@ class HomeViewModel(
     // ---------- Retos ----------
 
     fun addChallenge(icon: String, title: String, description: String, days: Int) {
-        viewModelScope.launch {
-            val userId = settingsRepository.sessionUserId.first() ?: return@launch
+        launchMutation {
+            val userId = settingsRepository.sessionUserId.first() ?: return@launchMutation
             challengeRepository.add(userId, icon, title, description, days)
             message("Reto agregado: tienes ${EcoChallenge.durationLabel(days)} para cumplirlo")
         }
     }
 
     fun updateChallenge(id: Long, icon: String, title: String, description: String, days: Int) {
-        viewModelScope.launch {
-            val userId = settingsRepository.sessionUserId.first() ?: return@launch
+        launchMutation {
+            val userId = settingsRepository.sessionUserId.first() ?: return@launchMutation
             challengeRepository.update(userId, id, icon, title, description, days)
             message("Reto actualizado")
         }
     }
 
     fun deleteChallenge(id: Long) {
-        viewModelScope.launch {
-            val userId = settingsRepository.sessionUserId.first() ?: return@launch
+        launchMutation {
+            val userId = settingsRepository.sessionUserId.first() ?: return@launchMutation
             challengeRepository.delete(userId, id)
         }
     }
 
     /** El usuario envió la foto de evidencia: el reto se cumple y gana sus EcoPoints. */
     fun completeChallenge(id: Long, evidencePath: String) {
-        viewModelScope.launch {
-            val userId = settingsRepository.sessionUserId.first() ?: return@launch
+        launchMutation {
+            val userId = settingsRepository.sessionUserId.first() ?: return@launchMutation
             val points = challengeRepository.complete(userId, id, evidencePath)
             if (points != null) {
                 vibrate()
@@ -275,9 +289,19 @@ class HomeViewModel(
     }
 
     fun logout(onDone: () -> Unit) {
+        if (overlay.value.signingOut) return
+        overlay.update { it.copy(signingOut = true) }
         viewModelScope.launch {
-            settingsRepository.endSession()
-            onDone()
+            try {
+                mutations.toList().joinAll()
+                userRepository.logout()
+                onDone()
+            } catch (error: Exception) {
+                error.rethrowCancellation()
+                message("No se pudo completar el guardado. La sesión sigue abierta; revisa tu conexión y vuelve a intentarlo.")
+            } finally {
+                overlay.update { it.copy(signingOut = false) }
+            }
         }
     }
 

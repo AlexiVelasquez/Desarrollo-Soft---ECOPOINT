@@ -118,6 +118,7 @@ fun HomeScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    if (state.signingOut) com.example.ecopoints.app.ui.components.SavingSessionDialog()
     val haptics = LocalHapticFeedback.current
 
     // Mensajes breves y vibración que pide el ViewModel

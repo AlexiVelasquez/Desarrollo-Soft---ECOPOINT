@@ -37,6 +37,7 @@ class MainActivity : ComponentActivity() {
             container.legacyMigrator.migrateIfNeeded()
             container.settingsRepository.settings.first()
         }
+        container.cloudSync.start()
 
         setContent {
             val settings by container.settingsRepository.settings
@@ -63,5 +64,6 @@ class MainActivity : ComponentActivity() {
         // Al salir se programan los avisos (mascota con hambre y retos por vencer)
         val container = container
         container.appScope.launch { container.reminderScheduler.scheduleAll() }
+        container.appScope.launch { container.cloudSync.tryFlushCurrent() }
     }
 }

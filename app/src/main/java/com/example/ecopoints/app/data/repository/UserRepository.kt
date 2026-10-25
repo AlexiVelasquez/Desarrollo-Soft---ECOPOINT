@@ -4,6 +4,7 @@ import androidx.room.withTransaction
 import com.example.ecopoints.app.data.local.db.*
 import com.example.ecopoints.app.data.model.*
 import com.example.ecopoints.app.data.remote.FirebaseBackupRepository
+import com.example.ecopoints.app.data.remote.CloudSyncCoordinator
 import com.example.ecopoints.app.data.remote.remoteMessage
 import com.example.ecopoints.app.data.remote.rethrowCancellation
 import com.example.ecopoints.app.domain.EcoRules
@@ -15,7 +16,8 @@ import kotlinx.coroutines.flow.map
 class UserRepository(
     private val database: EcoDatabase,
     private val settings: SettingsRepository,
-    private val cloud: FirebaseBackupRepository
+    private val cloud: FirebaseBackupRepository,
+    private val sync: CloudSyncCoordinator
 ) {
     private val userDao = database.userDao()
 
@@ -28,9 +30,10 @@ class UserRepository(
         name: String, email: String, password: String, species: String, petName: String,
         now: Long = System.currentTimeMillis()
     ): RegisterResult {
-        settings.endSession()
-        cloud.signOut()
+        var authenticating = false
         return try {
+            sync.prepareAuthentication(null)
+            authenticating = true
             val account = cloud.createAccount(name.trim(), normalize(email), password)
             val id = database.withTransaction {
                 val existing = userDao.findByEmail(account.email)
@@ -41,11 +44,12 @@ class UserRepository(
                     existing.id
                 } else createLocal(name.trim(), account.email, species, petName, now, account.uid)
             }
-            cloud.saveForUser(id)
+            val confirmed = cloud.saveForUser(id)
+            sync.recordConfirmed(id, confirmed)
             settings.startSession(id)
             RegisterResult.Success(id)
         } catch (error: Exception) {
-            cloud.signOut()
+            if (authenticating) cloud.signOut()
             error.rethrowCancellation()
             if (error is FirebaseAuthUserCollisionException) RegisterResult.EmailTaken
             else RegisterResult.Error(error.remoteMessage() + " Si la cuenta ya se creó, entra desde Iniciar sesión.")
@@ -53,31 +57,35 @@ class UserRepository(
     }
 
     suspend fun login(email: String, password: String): LoginResult {
-        settings.endSession()
-        cloud.signOut()
+        var authenticating = false
         return try {
+            sync.prepareAuthentication(normalize(email))
+            authenticating = true
             val account = cloud.signIn(normalize(email), password)
             val existing = userDao.findByEmail(account.email)
-            val id = if (existing != null) {
-                // No reemplaza cambios locales que aún no se hayan respaldado.
+            if (existing != null) {
                 check(existing.firebaseUid == null || existing.firebaseUid == account.uid)
                 userDao.linkFirebase(existing.id, account.uid)
-                existing.id
-            } else {
-                val backup = cloud.readBackup(account.email)
-                database.withTransaction {
-                    val name = backup?.profileName?.takeIf { it.isNotBlank() }
-                        ?: account.name?.takeIf { it.isNotBlank() } ?: account.email.substringBefore('@')
-                    val localId = createLocal(name, account.email, PetSpecies.DEFAULT, "", System.currentTimeMillis(), account.uid)
-                    if (backup != null) cloud.restoreForUser(localId, backup)
-                    localId
+                if (sync.hasPendingChanges(existing.id)) {
+                    sync.recordConfirmed(existing.id, cloud.saveForUser(existing.id))
                 }
             }
+            val backup = cloud.readBackup(account.email)
+            val id = database.withTransaction {
+                val name = backup?.profileName?.takeIf { it.isNotBlank() }
+                    ?: account.name?.takeIf { it.isNotBlank() } ?: account.email.substringBefore('@')
+                val localId = existing?.id ?: createLocal(name, account.email, PetSpecies.DEFAULT, "", System.currentTimeMillis(), account.uid)
+                // Siempre recupera el estado de nube, incluso si había una copia local antigua.
+                if (backup != null) cloud.restoreForUser(localId, backup)
+                localId
+            }
+            if (backup == null) cloud.saveForUser(id)
             cloud.saveProfileForUser(id)
+            sync.recordConfirmed(id)
             settings.startSession(id)
             LoginResult.Success(id, false)
         } catch (error: Exception) {
-            cloud.signOut()
+            if (authenticating) cloud.signOut()
             error.rethrowCancellation()
             LoginResult.Error(error.remoteMessage())
         }
@@ -86,9 +94,10 @@ class UserRepository(
     suspend fun sendPasswordReset(email: String) = cloud.sendPasswordReset(normalize(email))
 
     suspend fun logout() {
-        cloud.signOut()
-        settings.endSession()
+        sync.finishSession()
     }
+
+    suspend fun continueSession() = sync.refreshCurrent()
 
     sealed class UpdateProfileResult {
         data object Success : UpdateProfileResult()

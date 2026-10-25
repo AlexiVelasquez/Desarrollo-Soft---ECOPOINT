@@ -31,7 +31,7 @@ class AppContainer(context: Context) {
     private val preferencesStore: EcoPreferencesStore by lazy { EcoPreferencesStore(appContext) }
 
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(preferencesStore) }
-    val userRepository: UserRepository by lazy { UserRepository(database, settingsRepository, firebaseBackupRepository) }
+    val userRepository: UserRepository by lazy { UserRepository(database, settingsRepository, firebaseBackupRepository, cloudSync) }
     val petRepository: PetRepository by lazy { PetRepository(database) }
     val progressRepository: ProgressRepository by lazy { ProgressRepository(database) }
     val challengeRepository: ChallengeRepository by lazy { ChallengeRepository(database) }
@@ -39,6 +39,10 @@ class AppContainer(context: Context) {
     val cloudPreferences by lazy { com.example.ecopoints.app.data.local.CloudPreferences(appContext) }
     val firebaseBackupRepository by lazy {
         com.example.ecopoints.app.data.remote.FirebaseBackupRepository(appContext, database, settingsRepository)
+    }
+    val cloudSync by lazy {
+        com.example.ecopoints.app.data.remote.CloudSyncCoordinator(database, settingsRepository,
+            firebaseBackupRepository, cloudPreferences, appScope)
     }
 
     val locationProvider: LocationProvider by lazy { LocationProvider(appContext) }

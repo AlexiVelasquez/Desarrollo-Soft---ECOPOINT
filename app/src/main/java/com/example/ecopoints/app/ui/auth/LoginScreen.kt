@@ -85,6 +85,7 @@ fun LoginScreen(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
+                LoginEvent.Continued -> onContinueSession()
                 is LoginEvent.LoggedIn -> onLoggedIn(event.isNewUser)
                 is LoginEvent.PasswordResetSent -> {
                     showResetDialog = false
@@ -159,7 +160,8 @@ fun LoginScreen(
                     val savedName = state.savedUserName
                     if (savedName != null) {
                         OutlinedButton(
-                            onClick = onContinueSession,
+                            onClick = viewModel::continueSession,
+                            enabled = !state.isLoading,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(44.dp),

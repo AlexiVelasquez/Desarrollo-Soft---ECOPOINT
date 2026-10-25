@@ -37,9 +37,9 @@ Este comando requiere el archivo local de configuración, un emulador con red y 
 5. Editar nombre de perfil y nombre de mascota. Verificar que el correo de acceso se muestra como solo lectura. Cambiar tema, tamaño de texto y radio del mapa.
 6. Abrir EcoMapa con ubicación permitida y denegada. Revisar estados de red.
 7. Sin configuración Firebase, verificar que Ajustes muestre el aviso y botones deshabilitados.
-8. Registrar una cuenta desde la app y verificar el respaldo inicial `backups/{uid}` en consola. Guardar desde Ajustes sin introducir otra contraseña.
-9. Modificar progreso local, restaurar y confirmar que vuelve a la copia. Cancelar primero y verificar que no cambia nada.
-10. Reiniciar la app y comprobar que SharedPreferences conserva la fecha del respaldo de esa cuenta.
+8. Registrar una cuenta y verificar los documentos `users/{uid}` y `backups/{uid}`. Modificar datos y comprobar la sincronización automática, sin botones de guardar o restaurar.
+9. Cerrar sesión inmediatamente después de cambiar el progreso. Iniciar sesión desde otra instalación y comprobar que ve el cambio. Volver al primer dispositivo y confirmar que actualiza su caché antigua.
+10. Reiniciar la app y comprobar que SharedPreferences conserva la huella y fecha de la última sincronización. Si existen cambios pendientes, comprobar que se reintentan.
 11. Probar contraseña incorrecta, red desconectada, copia inexistente y reglas sin permiso. Confirmar mensaje y posibilidad de reintentar.
 12. Con dos usuarios Firebase, intentar acceder al documento del otro desde Emulator Suite y confirmar denegación. Confirmar que consultas de lista y clientes sin autenticar quedan denegados.
 13. Abrir «¿Olvidaste tu contraseña?», solicitar el enlace al correo propio y completar allí el cambio. Verificar acceso con la nueva contraseña y rechazo de la anterior. Este envío de correo no se realizó desde la prueba automatizada.
@@ -63,6 +63,16 @@ La compilación, las 58 pruebas unitarias y las 18 pruebas locales del emulador 
 El registro y el inicio de sesión utilizan la misma contraseña ingresada por el usuario en EcoPoints; Firebase la valida internamente. Se corrigieron los textos de acceso, registro, error y recuperación para no solicitar una segunda «contraseña Firebase». Para cuentas de la etapa antigua con dos claves distintas, el enlace de recuperación permite elegir la contraseña deseada tras verificar el correo. No se sustituyó la autenticación remota por una contraseña local ni se modificaron claves existentes sin verificación.
 
 Después de esta corrección pasaron la compilación, las 58 pruebas unitarias y la prueba remota de registro, acceso desde una caché vacía, perfiles y respaldos (1 prueba, 0 fallos, 0 omitidas). La contraseña elegida durante el registro permitió iniciar sesión en la segunda caché; la incorrecta fue rechazada. Se eliminaron los datos temporales al finalizar.
+
+## Sincronización automática y cierre de sesión
+
+Se eliminaron los botones Guardar respaldo y Restaurar desde Firebase. `CloudSyncCoordinator` observa cambios en las seis tablas y los ajustes, agrupa cambios cercanos y guarda perfil y estado de la cuenta automáticamente. SharedPreferences conserva la huella confirmada por UID; no se marca como sincronizada una escritura que solo está pendiente en el cliente.
+
+Home y Bienvenida ahora llaman al cierre centralizado de `UserRepository`, que espera la confirmación de Firestore antes de borrar la sesión. El panel bloquea acciones nuevas y espera las mutaciones que estaban en curso. Si hay cambios pendientes sin red, el cierre falla conservando la sesión y los datos locales; se reintenta el guardado. El inicio de sesión recupera la nube incluso si ya había una caché local y «Continuar como…» también actualiza el estado.
+
+La prueba remota ampliada ya pasó con una cuenta temporal: verificó guardado automático de perfil, mascota, puntos, retos, logros, historial y ajustes sin invocar un guardado manual; cierre justo después de una modificación; recuperación en un segundo dispositivo simulado y actualización posterior del primero; y bloqueo del cierre con Firestore desconectado. Después de reactivar la red se confirmó el cambio pendiente y pudo cerrarse la sesión. La cuenta y sus documentos temporales se eliminaron.
+
+Las fotos de evidencia no se suben a Firebase. Al refrescar una cuenta en su dispositivo original, las rutas de archivos que todavía existen se conservan. La sincronización de estados completos no combina ediciones simultáneas de una misma cuenta entre dispositivos.
 
 ## Alcance de la verificación
 
