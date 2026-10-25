@@ -53,7 +53,9 @@ En **Firestore → Datos → users** aparece un documento por UID con campos leg
 
 **Antes de usar esta actualización, publica la versión actual de `firestore.rules`.** Las reglas anteriores solo autorizaban `backups`; sin la nueva sección `users`, Firestore rechazará la escritura del perfil. Cada usuario puede consultar y modificar únicamente su documento. El correo debe coincidir con su identidad Firebase; las contraseñas permanecen en Authentication.
 
-Las cuentas de respaldo creadas con la versión anterior siguen funcionando: usa su contraseña Firebase en la pantalla de inicio de sesión. La contraseña local antigua puede ser distinta y ya no se utiliza para autenticar. Las cuentas exclusivamente locales deben registrarse una vez en Firebase desde el formulario de registro; su progreso local se conserva al vincularlas. La versión 3 de SQLite añade un UID único y elimina los hashes antiguos al vincular una cuenta tras la autenticación correcta.
+**La contraseña para iniciar sesión es la que escribiste al registrarte en EcoPoints.** No se solicita una clave de configuración, una contraseña de Google ni una segunda contraseña para los respaldos. Firebase Authentication verifica internamente esa misma contraseña elegida por el usuario.
+
+Las cuentas de una versión antigua podían tener claves diferentes para la app y los respaldos. Para unificarlas, usa «¿Olvidaste tu contraseña?» y elige la contraseña deseada desde el enlace enviado a tu correo. La app no modifica contraseñas antiguas sin verificar el correo ni acepta un hash local como sustituto de la autenticación remota. Las cuentas exclusivamente locales deben registrarse una vez desde el formulario de EcoPoints; su progreso local se conserva al vincularlas. La versión 3 de SQLite añade un UID único y elimina los hashes antiguos al vincular una cuenta tras la autenticación correcta.
 
 La sesión Firebase persiste mediante el SDK y se cierra con «Cerrar sesión». Ajustes usa esa misma sesión para **Guardar respaldo** y **Restaurar desde Firebase**, sin crear otra cuenta ni pedir de nuevo la contraseña. «¿Olvidaste tu contraseña?» solicita un enlace por correo a Firebase; el cambio se completa desde ese enlace. El correo es la identidad de acceso y se muestra como solo lectura en Perfil; el nombre y el nombre de mascota continúan siendo editables.
 
@@ -69,7 +71,7 @@ Después del registro inicial, los respaldos son manuales, de hasta 800 KB. Guar
 git clone https://github.com/AlexiVelasquez/Desarrollo-Soft---ECOPOINT.git
 ```
 
-Copia el archivo del **mismo proyecto** `ecopoints-3d8bb` en `app/google-services.json`, configura el SDK Android y compila. Ese archivo no está versionado. Después abre la app e inicia sesión con tu correo y contraseña Firebase existentes. No uses otro proyecto Firebase, porque sus cuentas y respaldos serían independientes.
+Copia el archivo del **mismo proyecto** `ecopoints-3d8bb` en `app/google-services.json`, configura el SDK Android y compila. Ese archivo no está versionado. Después abre la app e inicia sesión con tu correo y la contraseña que elegiste al registrarte en EcoPoints. No uses otro proyecto Firebase, porque sus cuentas y respaldos serían independientes.
 
 ## Verificación de la entrega
 

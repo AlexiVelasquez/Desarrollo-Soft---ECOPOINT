@@ -197,11 +197,18 @@ fun LoginScreen(
                             password = it
                             viewModel.onInputChanged()
                         },
-                        label = "Contraseña",
+                        label = "Contraseña de EcoPoints",
                         leadingIcon = Icons.Outlined.Lock,
                         isPassword = true,
                         imeAction = ImeAction.Done,
                         onDone = { viewModel.login(email, password) }
+                    )
+
+                    Text(
+                        "Usa la contraseña que elegiste al crear tu cuenta de EcoPoints.",
+                        fontSize = 12.sp,
+                        color = EcoTextSecondary,
+                        modifier = Modifier.padding(top = 6.dp)
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -289,7 +296,7 @@ private fun ResetPasswordDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    "Ingresa tu correo para recibir un enlace de recuperación de Firebase.",
+                    "Ingresa tu correo para recibir un enlace y elegir tu contraseña de EcoPoints. Si tu cuenta antigua tenía otra clave para los respaldos, usa este enlace para unificarla.",
                     fontSize = 13.sp,
                     color = EcoTextSecondary
                 )

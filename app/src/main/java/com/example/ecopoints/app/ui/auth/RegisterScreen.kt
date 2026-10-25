@@ -211,7 +211,7 @@ fun RegisterScreen(
                     EcoTextField(
                         value = password,
                         onValueChange = { password = it; viewModel.onInputChanged() },
-                        label = "Contraseña",
+                        label = "Crea tu contraseña de EcoPoints",
                         leadingIcon = Icons.Outlined.Lock,
                         isPassword = true
                     )

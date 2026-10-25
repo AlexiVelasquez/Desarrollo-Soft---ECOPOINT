@@ -58,6 +58,12 @@ Al iniciar sesión, los usuarios anteriores también se incorporan a `users` sin
 
 La compilación, las 58 pruebas unitarias y las 18 pruebas locales del emulador pasaron después de este cambio. Lint terminó sin errores, con 34 advertencias y una sugerencia. Tras la publicación de las reglas por el usuario, **la prueba remota ampliada de perfiles pasó contra `ecopoints-3d8bb`: 1 prueba, 0 fallos, 0 omitidas**. Verificó los campos del perfil, la ausencia de contraseña en Firestore, el rechazo de cambio de UID, la creación del perfil al entrar con una cuenta antigua y el rechazo de lectura anónima. También confirmó recuperación desde una segunda caché vacía y conservación de cambios locales. Se eliminaron perfil, respaldo y cuenta temporales al finalizar.
 
-## Alcance
+## Contraseña elegida en EcoPoints
+
+El registro y el inicio de sesión utilizan la misma contraseña ingresada por el usuario en EcoPoints; Firebase la valida internamente. Se corrigieron los textos de acceso, registro, error y recuperación para no solicitar una segunda «contraseña Firebase». Para cuentas de la etapa antigua con dos claves distintas, el enlace de recuperación permite elegir la contraseña deseada tras verificar el correo. No se sustituyó la autenticación remota por una contraseña local ni se modificaron claves existentes sin verificación.
+
+Después de esta corrección pasaron la compilación, las 58 pruebas unitarias y la prueba remota de registro, acceso desde una caché vacía, perfiles y respaldos (1 prueba, 0 fallos, 0 omitidas). La contraseña elegida durante el registro permitió iniciar sesión en la segunda caché; la incorrecta fue rechazada. Se eliminaron los datos temporales al finalizar.
+
+## Alcance de la verificación
 
 Esta lista define el recorrido manual y no afirma que se haya ejecutado completo. Se incorporó localmente el archivo `app/google-services.json` del proyecto `ecopoints-3d8bb`, cuyo paquete coincide con `com.example.ecopoints.app`. El procesamiento de Google Services fue correcto y la prueba remota confirmó el funcionamiento de Authentication, escritura y lectura autenticadas y bloqueo de lectura anónima. Las reglas fueron publicadas por el usuario desde la consola; no se ha comparado automáticamente todo su contenido con el archivo local ni probado aún el aislamiento entre dos usuarios autenticados.
