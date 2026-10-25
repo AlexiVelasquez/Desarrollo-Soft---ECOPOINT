@@ -60,6 +60,22 @@ class FirebaseBackupSmokeTest {
                 assertEquals(uid, databases[0].userDao().findById(firstId)?.firebaseUid)
                 assertTrue(clouds[0].isSignedInAs(email))
                 assertNotNull(clouds[0].readBackup(email))
+                val profileDocument = firestore.collection("users").document(checkNotNull(uid))
+                val profile = profileDocument.get(Source.SERVER).await()
+                assertEquals(uid, profile.getString("uid"))
+                assertEquals("Prueba Firebase", profile.getString("name"))
+                assertEquals(email, profile.getString("email"))
+                assertEquals("Koala", profile.getString("petSpecies"))
+                assertEquals("Mascota QA", profile.getString("petName"))
+                assertNotNull(profile.getTimestamp("createdAt"))
+                assertNotNull(profile.getTimestamp("updatedAt"))
+                assertFalse(profile.contains("password"))
+                try {
+                    profileDocument.update("uid", "another-owner").await()
+                    fail("No debe poder cambiarse la identidad del perfil")
+                } catch (error: FirebaseFirestoreException) {
+                    assertEquals(FirebaseFirestoreException.Code.PERMISSION_DENIED, error.code)
+                }
                 assertNull(databases[0].userDao().findById(firstId)?.passwordHash)
                 settings[0].setLargeText(true)
                 databases[0].progressDao().earn(firstId, 25)
@@ -77,10 +93,16 @@ class FirebaseBackupSmokeTest {
                 assertNull(auth.currentUser)
                 assertEquals(0, databases[1].userDao().count())
 
+                // Los usuarios de la versión anterior se incorporan a users al iniciar sesión.
+                auth.signInWithEmailAndPassword(email, password).await()
+                profileDocument.delete().await()
+                auth.signOut()
+
                 val login = users[1].login(email, password)
                 assertTrue("Debe entrar sin registrarse en el segundo dispositivo: " + login, login is LoginResult.Success)
                 val secondId = (login as LoginResult.Success).userId
                 assertEquals(uid, databases[1].userDao().findById(secondId)?.firebaseUid)
+                assertEquals(email, profileDocument.get(Source.SERVER).await().getString("email"))
                 assertEquals("Prueba Firebase", databases[1].userDao().findById(secondId)?.name)
                 assertEquals(75, databases[1].progressDao().get(secondId)?.balance)
                 assertEquals("Mascota QA", databases[1].petDao().get(secondId)?.name)
@@ -103,14 +125,24 @@ class FirebaseBackupSmokeTest {
                 } catch (error: FirebaseFirestoreException) {
                     assertEquals(FirebaseFirestoreException.Code.PERMISSION_DENIED, error.code)
                 }
+                try {
+                    profileDocument.get(Source.SERVER).await()
+                    fail("El perfil tampoco permite lectura sin autenticación")
+                } catch (error: FirebaseFirestoreException) {
+                    assertEquals(FirebaseFirestoreException.Code.PERMISSION_DENIED, error.code)
+                }
             }
         } finally {
             try {
                 withTimeout(30_000) {
                     val cleanupUser = auth.signInWithEmailAndPassword(email, password).await().user
                     if (cleanupUser != null) {
-                        firestore.collection("backups").document(cleanupUser.uid).delete().await()
-                        cleanupUser.delete().await()
+                        try {
+                            firestore.collection("backups").document(cleanupUser.uid).delete().await()
+                            firestore.collection("users").document(cleanupUser.uid).delete().await()
+                        } finally {
+                            cleanupUser.delete().await()
+                        }
                     }
                 }
             } finally {

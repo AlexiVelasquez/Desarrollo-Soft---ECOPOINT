@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import com.example.ecopoints.app.data.local.db.EcoDatabase
 import com.example.ecopoints.app.data.repository.SettingsRepository
 import com.google.firebase.FirebaseApp
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FieldValue
@@ -18,6 +19,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import java.util.Date
 
 data class FirebaseAccount(val uid: String, val email: String, val name: String?)
 
@@ -61,6 +63,33 @@ class FirebaseBackupRepository(
     suspend fun updateName(email: String, name: String) = withTimeout(30_000) {
         check(isSignedInAs(email)) { "Vuelve a iniciar sesión para actualizar tu perfil." }
         checkNotNull(auth.currentUser).updateProfile(UserProfileChangeRequest.Builder().setDisplayName(name).build()).await()
+    }
+
+    /** Perfil legible en Firestore, siempre con el mismo UID que Authentication. */
+    private fun profileData(user: com.example.ecopoints.app.data.local.db.UserEntity,
+                            pet: com.example.ecopoints.app.data.local.db.PetEntity): Map<String, Any> {
+        check(matchesIdentity(user.firebaseUid) && isSignedInAs(user.email))
+        val createdAt = checkNotNull(auth.currentUser?.metadata).creationTimestamp
+        return mapOf(
+            "uid" to checkNotNull(user.firebaseUid),
+            "name" to user.name,
+            "email" to user.email,
+            "petSpecies" to pet.species,
+            "petName" to pet.name,
+            "createdAt" to Timestamp(Date(createdAt)),
+            "updatedAt" to FieldValue.serverTimestamp()
+        )
+    }
+
+    /** Vincula también los usuarios existentes al entrar, sin reemplazar su respaldo. */
+    suspend fun saveProfileForUser(userId: Long) = withContext(Dispatchers.IO) {
+        withTimeout(30_000) {
+            val user = checkNotNull(database.userDao().findById(userId))
+            val pet = checkNotNull(database.petDao().get(userId))
+            val profile = profileData(user, pet)
+            firestore.collection("users").document(checkNotNull(user.firebaseUid)).set(profile).await()
+            Unit
+        }
     }
 
     private fun document(email: String) = firestore.collection("backups").document(
@@ -119,7 +148,12 @@ class FirebaseBackupRepository(
             backup.validate(user.email)
             val payload = gson.toJson(backup)
             require(payload.toByteArray(Charsets.UTF_8).size <= MAX_BYTES) { "Respaldo demasiado grande" }
-            target.set(mapOf("version" to 1, "payload" to payload, "updatedAt" to FieldValue.serverTimestamp())).await()
+            // Un registro correcto confirma perfil y respaldo en una sola escritura atómica.
+            val profile = profileData(user, backup.pet)
+            firestore.batch()
+                .set(firestore.collection("users").document(checkNotNull(user.firebaseUid)), profile)
+                .set(target, mapOf("version" to 1, "payload" to payload, "updatedAt" to FieldValue.serverTimestamp()))
+                .commit().await()
             Unit
         }
     }

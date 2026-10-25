@@ -50,6 +50,14 @@ SQLite versión 3 añade `firebase_uid` con índice único. Las migraciones 1 a 
 
 El informe y las diapositivas iniciales de G01 documentan la etapa anterior de respaldos. El comportamiento de autenticación actualizado está descrito en README.md y en esta validación.
 
+## Perfiles visibles en Firestore
+
+El registro ahora guarda `users/{uid}` con nombre, correo, especie y nombre de mascota, fecha de creación de la cuenta y fecha de actualización. El perfil y el respaldo inicial se escriben en un mismo lote: si falla cualquiera, no se confirma el registro como correcto. Authentication conserva las credenciales; las contraseñas no se escriben en Firestore.
+
+Al iniciar sesión, los usuarios anteriores también se incorporan a `users` sin reemplazar su respaldo. Guardar un respaldo actualiza el perfil. Se conserva la validación de correo existente, que admite distintos proveedores con formato válido, y el mínimo de ocho caracteres de contraseña. No se cambió el diseño de las mascotas.
+
+La compilación, las 58 pruebas unitarias y las 18 pruebas locales del emulador pasaron después de este cambio. Lint terminó sin errores, con 34 advertencias y una sugerencia. **La prueba remota ampliada de perfiles queda pendiente de publicar las reglas actualizadas** y quedó omitida en esta ejecución: las reglas anteriores no permiten escribir en `users`. La prueba preparada verifica los campos del perfil, que no haya contraseña, el rechazo de cambio de UID, la creación del perfil al entrar con una cuenta antigua y el rechazo de lectura anónima. Los resultados de Firebase descritos arriba corresponden a la versión de autenticación anterior a esta colección.
+
 ## Alcance
 
 Esta lista define el recorrido manual y no afirma que se haya ejecutado completo. Se incorporó localmente el archivo `app/google-services.json` del proyecto `ecopoints-3d8bb`, cuyo paquete coincide con `com.example.ecopoints.app`. El procesamiento de Google Services fue correcto y la prueba remota confirmó el funcionamiento de Authentication, escritura y lectura autenticadas y bloqueo de lectura anónima. Las reglas fueron publicadas por el usuario desde la consola; no se ha comparado automáticamente todo su contenido con el archivo local ni probado aún el aislamiento entre dos usuarios autenticados.

@@ -73,6 +73,7 @@ class UserRepository(
                     localId
                 }
             }
+            cloud.saveProfileForUser(id)
             settings.startSession(id)
             LoginResult.Success(id, false)
         } catch (error: Exception) {

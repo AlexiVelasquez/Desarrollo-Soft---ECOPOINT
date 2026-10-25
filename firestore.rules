@@ -1,6 +1,27 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /users/{uid} {
+      function ownsProfile() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+      function validProfile() {
+        let data = request.resource.data;
+        return data.keys().hasAll(['uid', 'name', 'email', 'petSpecies', 'petName', 'createdAt', 'updatedAt'])
+          && data.keys().hasOnly(['uid', 'name', 'email', 'petSpecies', 'petName', 'createdAt', 'updatedAt'])
+          && data.uid == uid
+          && data.email == request.auth.token.email
+          && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+          && data.petSpecies in ['Zorro', 'Panda', 'Koala', 'Gato', 'Búho']
+          && data.petName is string && data.petName.size() <= 100
+          && data.createdAt is timestamp && data.createdAt <= request.time
+          && data.updatedAt == request.time;
+      }
+      allow get, delete: if ownsProfile();
+      allow create: if ownsProfile() && validProfile();
+      allow update: if ownsProfile() && validProfile()
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
     match /backups/{uid} {
       allow get, delete: if request.auth != null && request.auth.uid == uid;
       allow create, update: if request.auth != null && request.auth.uid == uid
