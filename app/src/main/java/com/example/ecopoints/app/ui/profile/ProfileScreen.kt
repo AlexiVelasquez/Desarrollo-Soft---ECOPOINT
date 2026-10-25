@@ -12,20 +12,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -33,6 +31,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ecopoints.app.ui.components.EcoActionButton
+import com.example.ecopoints.app.ui.components.EcoIconActionButton
 import com.example.ecopoints.app.ui.components.EcoSectionCard
 import com.example.ecopoints.app.ui.theme.EcoBackground
 import com.example.ecopoints.app.ui.theme.EcoCard
@@ -62,7 +62,7 @@ fun ProfileScreen(
             TopAppBar(
                 title = { Text("Mi Perfil", color = EcoGreenDark, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    EcoIconActionButton(onClick = onBack) {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Volver",
@@ -72,7 +72,7 @@ fun ProfileScreen(
                 },
                 actions = {
                     if (!state.isLoading && !state.isEditing) {
-                        IconButton(onClick = viewModel::toggleEditMode) {
+                        EcoIconActionButton(onClick = viewModel::toggleEditMode) {
                             Icon(Icons.Filled.Edit, contentDescription = "Editar", tint = EcoGreenDark)
                         }
                     }
@@ -126,7 +126,7 @@ fun ProfileScreen(
                             singleLine = true
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(
+                        EcoActionButton(
                             onClick = viewModel::saveProfile,
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
@@ -134,7 +134,7 @@ fun ProfileScreen(
                             Text("Guardar cambios")
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Button(
+                        EcoActionButton(
                             onClick = viewModel::toggleEditMode,
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(
@@ -148,11 +148,11 @@ fun ProfileScreen(
                         Text("Nombre", fontSize = 12.sp, color = EcoGreenDark)
                         Text(state.userName, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.height(16.dp))
-                        
+
                         Text("Correo electrónico", fontSize = 12.sp, color = EcoGreenDark)
                         Text(state.email, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.height(16.dp))
-                        
+
                         Text("Nombre de la mascota", fontSize = 12.sp, color = EcoGreenDark)
                         Text(state.petName, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     }

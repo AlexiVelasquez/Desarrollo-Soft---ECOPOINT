@@ -37,23 +37,20 @@ import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.ShoppingBag
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +59,8 @@ import androidx.compose.ui.unit.sp
 import com.example.ecopoints.app.data.Achievement
 import com.example.ecopoints.app.data.AchievementStats
 import com.example.ecopoints.app.data.EcoImpact
+import com.example.ecopoints.app.ui.components.EcoDialogButton
+import com.example.ecopoints.app.ui.components.EcoTextActionButton
 import com.example.ecopoints.app.ui.theme.EcoCard
 import com.example.ecopoints.app.ui.theme.EcoGold
 import com.example.ecopoints.app.ui.theme.EcoGoldContainer
@@ -220,7 +219,7 @@ fun AchievementsCard(stats: AchievementStats) {
                 Achievement.ALL.forEach { AchievementRow(it, stats) }
             }
 
-            TextButton(onClick = { expanded = !expanded }) {
+            EcoTextActionButton(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth()) {
                 Icon(
                     if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                     contentDescription = null,
@@ -329,7 +328,7 @@ fun NewAchievementsDialog(achievements: List<Achievement>, onDismiss: () -> Unit
             }
         },
         confirmButton = {
-            Button(
+            EcoDialogButton(
                 onClick = onDismiss,
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
             ) { Text("¡Genial!") }

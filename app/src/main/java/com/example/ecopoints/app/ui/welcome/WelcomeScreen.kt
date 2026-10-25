@@ -23,16 +23,14 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ecopoints.app.R
+import com.example.ecopoints.app.ui.components.EcoActionButton
+import com.example.ecopoints.app.ui.components.EcoOutlinedActionButton
 import com.example.ecopoints.app.ui.components.petImageRes
 import com.example.ecopoints.app.ui.theme.EcoBackground
 import com.example.ecopoints.app.ui.theme.EcoCard
@@ -232,11 +232,10 @@ fun WelcomeScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    Button(
+                    EcoActionButton(
                         onClick = onGoHome,
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp),
+                            .fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
                     ) {
@@ -251,11 +250,10 @@ fun WelcomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        OutlinedButton(
+                        EcoOutlinedActionButton(
                             onClick = onOpenSettings,
                             modifier = Modifier
-                                .weight(1f)
-                                .height(38.dp),
+                                .weight(1f),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Icon(Icons.Filled.Settings, contentDescription = null, tint = EcoGreenDark, modifier = Modifier.size(16.dp))
@@ -263,11 +261,10 @@ fun WelcomeScreen(
                             Text("Ajustes", fontSize = 12.sp, color = EcoGreenDark)
                         }
 
-                        OutlinedButton(
+                        EcoOutlinedActionButton(
                             onClick = { viewModel.logout(onLoggedOut) },
                             modifier = Modifier
-                                .weight(1f)
-                                .height(38.dp),
+                                .weight(1f),
                             shape = RoundedCornerShape(10.dp),
                             border = BorderStroke(1.dp, EcoError)
                         ) {

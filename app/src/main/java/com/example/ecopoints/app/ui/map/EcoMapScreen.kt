@@ -37,18 +37,15 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Recycling
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WifiOff
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +66,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ecopoints.app.R
 import com.example.ecopoints.app.data.RecyclingPoint
 import com.example.ecopoints.app.domain.EcoRules
+import com.example.ecopoints.app.ui.components.EcoActionButton
+import com.example.ecopoints.app.ui.components.EcoIconActionButton
+import com.example.ecopoints.app.ui.components.EcoOutlinedActionButton
 import com.example.ecopoints.app.ui.theme.EcoBackground
 import com.example.ecopoints.app.ui.theme.EcoBorder
 import com.example.ecopoints.app.ui.theme.EcoCard
@@ -143,7 +143,7 @@ fun EcoMapScreen(viewModel: MapViewModel, onBack: () -> Unit) {
             .padding(top = 40.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) {
+            EcoIconActionButton(onClick = onBack) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = EcoGreenDark)
             }
             Column {
@@ -392,7 +392,7 @@ private fun PointsList(
                     )
                     Text(distanceLabel(point.distanceMeters), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = EcoGreen)
                 }
-                IconButton(onClick = { onDirections(point) }) {
+                EcoIconActionButton(onClick = { onDirections(point) }) {
                     Icon(Icons.Filled.Directions, contentDescription = "Cómo llegar", tint = EcoGreenDark)
                 }
             }
@@ -425,8 +425,9 @@ private fun StatusMessage(
         Text(text, fontSize = 13.sp, color = EcoTextSecondary, textAlign = TextAlign.Center)
         if (actionLabel != null) {
             Spacer(modifier = Modifier.height(12.dp))
-            Button(
+            EcoActionButton(
                 onClick = onAction,
+                modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
             ) {
                 if (showRefreshIcon) {
@@ -437,7 +438,7 @@ private fun StatusMessage(
             }
         }
         if (secondaryLabel != null) {
-            OutlinedButton(onClick = onSecondary) { Text(secondaryLabel, color = EcoGreenDark) }
+            EcoOutlinedActionButton(onClick = onSecondary, modifier = Modifier.fillMaxWidth()) { Text(secondaryLabel, color = EcoGreenDark) }
         }
     }
 }

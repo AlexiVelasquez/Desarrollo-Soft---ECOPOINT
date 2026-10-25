@@ -13,8 +13,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,26 +42,21 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -72,10 +67,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
-import com.example.ecopoints.app.data.EcoChallenge
 import com.example.ecopoints.app.R
-import com.example.ecopoints.app.util.DateUtils
-import com.example.ecopoints.app.util.Validators
+import com.example.ecopoints.app.data.EcoChallenge
+import com.example.ecopoints.app.ui.components.EcoActionButton
+import com.example.ecopoints.app.ui.components.EcoDialogButton
+import com.example.ecopoints.app.ui.components.EcoIconActionButton
+import com.example.ecopoints.app.ui.components.EcoOutlinedActionButton
+import com.example.ecopoints.app.ui.components.EcoTextActionButton
 import com.example.ecopoints.app.ui.theme.EcoCard
 import com.example.ecopoints.app.ui.theme.EcoError
 import com.example.ecopoints.app.ui.theme.EcoErrorContainer
@@ -86,6 +84,8 @@ import com.example.ecopoints.app.ui.theme.EcoRow
 import com.example.ecopoints.app.ui.theme.EcoTextMuted
 import com.example.ecopoints.app.ui.theme.EcoTextPrimary
 import com.example.ecopoints.app.ui.theme.EcoTextSecondary
+import com.example.ecopoints.app.util.DateUtils
+import com.example.ecopoints.app.util.Validators
 import java.io.File
 import kotlin.math.ceil
 
@@ -174,7 +174,7 @@ fun ChallengesCard(
                         color = EcoTextMuted
                     )
                 }
-                OutlinedButton(
+                EcoOutlinedActionButton(
                     onClick = {
                         editing = null
                         showDialog = true
@@ -250,12 +250,12 @@ fun ChallengesCard(
                             )
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(
+                            EcoIconActionButton(
                                 onClick = {
                                     editing = challenge
                                     showDialog = true
                                 },
-                                modifier = Modifier.size(34.dp)
+                                modifier = Modifier
                             ) {
                                 Icon(
                                     painterResource(id = R.drawable.ic_edit),
@@ -264,9 +264,9 @@ fun ChallengesCard(
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
-                            IconButton(
+                            EcoIconActionButton(
                                 onClick = { pendingDelete = challenge },
-                                modifier = Modifier.size(34.dp)
+                                modifier = Modifier
                             ) {
                                 Icon(
                                     painterResource(id = R.drawable.ic_delete),
@@ -277,13 +277,13 @@ fun ChallengesCard(
                             }
                             Spacer(modifier = Modifier.weight(1f))
                             // Si venció, solo se puede volver a activar editándolo.
-                            Button(
+                            EcoActionButton(
                                 onClick = { completing = challenge },
                                 enabled = !expired,
                                 shape = RoundedCornerShape(10.dp),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen),
-                                modifier = Modifier.height(32.dp)
+                                modifier = Modifier
                             ) {
                                 Icon(Icons.Filled.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -295,9 +295,9 @@ fun ChallengesCard(
             }
 
             if (history.isNotEmpty()) {
-                TextButton(
+                EcoTextActionButton(
                     onClick = { showHistory = !showHistory },
-                    modifier = Modifier.padding(top = 4.dp)
+                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                 ) {
                     Icon(
                         if (showHistory) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
@@ -358,13 +358,13 @@ fun ChallengesCard(
             title = { Text("¿Eliminar reto?", color = EcoGreenDark, fontWeight = FontWeight.Bold) },
             text = { Text("«${target.title}» se quitará de tu lista.") },
             confirmButton = {
-                TextButton(onClick = {
+                EcoDialogButton(textOnly = true, onClick = {
                     onDelete(target.id)
                     pendingDelete = null
                 }) { Text("Eliminar", color = EcoError, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDelete = null }) { Text("Cancelar", color = EcoGreenDark) }
+                EcoDialogButton(textOnly = true, onClick = { pendingDelete = null }) { Text("Cancelar", color = EcoGreenDark) }
             }
         )
     }
@@ -489,7 +489,7 @@ private fun EvidenceDialog(
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
+                    EcoOutlinedActionButton(
                         onClick = {
                             val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", photoFile)
                             try {
@@ -506,7 +506,7 @@ private fun EvidenceDialog(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Cámara", fontSize = 12.sp, color = EcoGreenDark)
                     }
-                    OutlinedButton(
+                    EcoOutlinedActionButton(
                         onClick = {
                             galleryLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                         },
@@ -522,14 +522,14 @@ private fun EvidenceDialog(
             }
         },
         confirmButton = {
-            Button(
+            EcoDialogButton(
                 onClick = { onConfirm(photoFile.absolutePath) },
                 enabled = preview != null,
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
             ) { Text("Enviar evidencia") }
         },
         dismissButton = {
-            TextButton(onClick = { cancel() }) { Text("Cancelar", color = EcoGreenDark) }
+            EcoDialogButton(textOnly = true, onClick = { cancel() }) { Text("Cancelar", color = EcoGreenDark) }
         }
     )
 }
@@ -652,7 +652,7 @@ private fun ChallengeDialog(
             }
         },
         confirmButton = {
-            Button(
+            EcoDialogButton(
                 onClick = {
                     val error = Validators.challengeTitleError(title)
                     if (error != null) {
@@ -665,7 +665,7 @@ private fun ChallengeDialog(
             ) { Text("Guardar") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar", color = EcoGreenDark) }
+            EcoDialogButton(textOnly = true, onClick = onDismiss) { Text("Cancelar", color = EcoGreenDark) }
         }
     )
 }

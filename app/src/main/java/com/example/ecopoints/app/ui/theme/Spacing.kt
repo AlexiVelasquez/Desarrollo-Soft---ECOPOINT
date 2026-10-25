@@ -23,7 +23,10 @@ object EcoSpacing {
     val Small = 4.dp
 
     /** Alto de los botones principales. */
-    val Button = 44.dp
+    val Button = 48.dp
+    val ButtonMinWidth = 112.dp
+    val DialogButtonWidth = 144.dp
+    val IconButton = 48.dp
 
     /** Margen superior en pantallas completas (deja libre la barra de estado). */
     val TopInset = 50.dp

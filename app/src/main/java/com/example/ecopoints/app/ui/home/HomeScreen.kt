@@ -41,27 +41,23 @@ import androidx.compose.material.icons.filled.SentimentSatisfied
 import androidx.compose.material.icons.filled.SportsTennis
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,6 +82,10 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.example.ecopoints.app.R
 import com.example.ecopoints.app.data.PetStage
 import com.example.ecopoints.app.domain.PetAction
+import com.example.ecopoints.app.ui.components.EcoActionButton
+import com.example.ecopoints.app.ui.components.EcoDialogButton
+import com.example.ecopoints.app.ui.components.EcoIconActionButton
+import com.example.ecopoints.app.ui.components.EcoOutlinedActionButton
 import com.example.ecopoints.app.ui.components.EcoSectionCard
 import com.example.ecopoints.app.ui.components.petImageRes
 import com.example.ecopoints.app.ui.theme.EcoBackground
@@ -187,21 +187,21 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onOpenProfile) {
+                    EcoIconActionButton(onClick = onOpenProfile) {
                         Icon(
                             imageVector = Icons.Filled.Person,
                             contentDescription = "Perfil",
                             tint = EcoGreenDark
                         )
                     }
-                    IconButton(onClick = onOpenSettings) {
+                    EcoIconActionButton(onClick = onOpenSettings) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_settings),
                             contentDescription = "Ajustes",
                             tint = EcoGreenDark
                         )
                     }
-                    IconButton(onClick = { viewModel.logout(onLoggedOut) }) {
+                    EcoIconActionButton(onClick = { viewModel.logout(onLoggedOut) }) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_exit),
                             contentDescription = "Cerrar sesión",
@@ -280,13 +280,13 @@ fun HomeScreen(
                 Text("Esto gastará ${action.cost} EcoPoints. Tu saldo quedará en ${state.balance - action.cost} pts.")
             },
             confirmButton = {
-                Button(
+                EcoDialogButton(
                     onClick = viewModel::confirmPendingAction,
                     colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
                 ) { Text("Gastar ${action.cost} pts") }
             },
             dismissButton = {
-                TextButton(onClick = viewModel::dismissPendingAction) { Text("Cancelar", color = EcoGreenDark) }
+                EcoDialogButton(textOnly = true, onClick = viewModel::dismissPendingAction) { Text("Cancelar", color = EcoGreenDark) }
             }
         )
     }
@@ -328,7 +328,7 @@ fun HomeScreen(
                 }
             },
             confirmButton = {
-                Button(
+                EcoDialogButton(
                     onClick = viewModel::dismissDailyVisit,
                     colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
                 ) { Text("¡Genial!") }
@@ -542,11 +542,10 @@ private fun PetCard(state: HomeUiState, onFeed: () -> Unit, onPlay: () -> Unit) 
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Button(
+            EcoActionButton(
                 onClick = onFeed,
                 modifier = Modifier
-                    .weight(1f)
-                    .height(38.dp),
+                    .weight(1f),
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
             ) {
@@ -555,11 +554,10 @@ private fun PetCard(state: HomeUiState, onFeed: () -> Unit, onPlay: () -> Unit) 
                 Text("Alimentar (-${PetAction.FEED.cost})", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             }
 
-            OutlinedButton(
+            EcoOutlinedActionButton(
                 onClick = onPlay,
                 modifier = Modifier
-                    .weight(1f)
-                    .height(38.dp),
+                    .weight(1f),
                 shape = RoundedCornerShape(10.dp),
                 border = BorderStroke(1.dp, EcoGreen)
             ) {
@@ -605,11 +603,10 @@ private fun MapPreviewCard(radiusKm: Int, onOpenMap: () -> Unit) {
             color = EcoTextSecondary
         )
         Spacer(modifier = Modifier.height(10.dp))
-        Button(
+        EcoActionButton(
             onClick = onOpenMap,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(40.dp),
+                .fillMaxWidth(),
             shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
         ) {

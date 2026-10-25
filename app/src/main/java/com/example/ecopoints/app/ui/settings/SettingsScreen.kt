@@ -1,6 +1,7 @@
 package com.example.ecopoints.app.ui.settings
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -25,7 +26,6 @@ import androidx.compose.material.icons.outlined.Radar
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.WarningAmber
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,11 +34,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.background
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -48,6 +47,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ecopoints.app.data.model.ThemeMode
 import com.example.ecopoints.app.domain.EcoRules
+import com.example.ecopoints.app.ui.components.EcoActionButton
 import com.example.ecopoints.app.ui.theme.EcoBackground
 import com.example.ecopoints.app.ui.theme.EcoCard
 import com.example.ecopoints.app.ui.theme.EcoGreen
@@ -194,11 +194,10 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Button(
+        EcoActionButton(
             onClick = onBack,
             modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp),
+                .fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
         ) {
