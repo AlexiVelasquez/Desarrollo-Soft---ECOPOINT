@@ -56,7 +56,7 @@ El registro ahora guarda `users/{uid}` con nombre, correo, especie y nombre de m
 
 Al iniciar sesión, los usuarios anteriores también se incorporan a `users` sin reemplazar su respaldo. Guardar un respaldo actualiza el perfil. Se conserva la validación de correo existente, que admite distintos proveedores con formato válido, y el mínimo de ocho caracteres de contraseña. No se cambió el diseño de las mascotas.
 
-La compilación, las 58 pruebas unitarias y las 18 pruebas locales del emulador pasaron después de este cambio. Lint terminó sin errores, con 34 advertencias y una sugerencia. **La prueba remota ampliada de perfiles queda pendiente de publicar las reglas actualizadas** y quedó omitida en esta ejecución: las reglas anteriores no permiten escribir en `users`. La prueba preparada verifica los campos del perfil, que no haya contraseña, el rechazo de cambio de UID, la creación del perfil al entrar con una cuenta antigua y el rechazo de lectura anónima. Los resultados de Firebase descritos arriba corresponden a la versión de autenticación anterior a esta colección.
+La compilación, las 58 pruebas unitarias y las 18 pruebas locales del emulador pasaron después de este cambio. Lint terminó sin errores, con 34 advertencias y una sugerencia. Tras la publicación de las reglas por el usuario, **la prueba remota ampliada de perfiles pasó contra `ecopoints-3d8bb`: 1 prueba, 0 fallos, 0 omitidas**. Verificó los campos del perfil, la ausencia de contraseña en Firestore, el rechazo de cambio de UID, la creación del perfil al entrar con una cuenta antigua y el rechazo de lectura anónima. También confirmó recuperación desde una segunda caché vacía y conservación de cambios locales. Se eliminaron perfil, respaldo y cuenta temporales al finalizar.
 
 ## Alcance
 
