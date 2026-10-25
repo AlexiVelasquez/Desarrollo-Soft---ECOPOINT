@@ -36,6 +36,10 @@ class AppContainer(context: Context) {
     val progressRepository: ProgressRepository by lazy { ProgressRepository(database) }
     val challengeRepository: ChallengeRepository by lazy { ChallengeRepository(database) }
     val activityLogRepository: ActivityLogRepository by lazy { ActivityLogRepository(database) }
+    val cloudPreferences by lazy { com.example.ecopoints.app.data.local.CloudPreferences(appContext) }
+    val firebaseBackupRepository by lazy {
+        com.example.ecopoints.app.data.remote.FirebaseBackupRepository(appContext, database, settingsRepository)
+    }
 
     val locationProvider: LocationProvider by lazy { LocationProvider(appContext) }
 

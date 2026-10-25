@@ -13,6 +13,8 @@ class SettingsRepository(private val store: EcoPreferencesStore) {
     /** Id del usuario con la sesión iniciada, o null si no hay sesión. */
     val sessionUserId: Flow<Long?> = store.sessionUserId
 
+    suspend fun restorePreferences(settings: AppSettings) = store.importLegacy(settings, null)
+
     suspend fun startSession(userId: Long) = store.setSession(userId)
 
     suspend fun endSession() = store.clearSession()

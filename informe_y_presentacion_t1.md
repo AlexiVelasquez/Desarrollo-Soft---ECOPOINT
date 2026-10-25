@@ -1,4 +1,5 @@
 # Entregables Académicos T1 - EcoPoints
+> Documento histórico de T1. La entrega actual está en `docs/` y la configuración vigente está en `README.md`. Las referencias de este documento a múltiples Activities y almacenamiento exclusivo en SharedPreferences corresponden a una versión anterior.
 **Curso:** Desarrollo de Aplicaciones Móviles (NRC 19586)  
 **Docente:** Ing. Gerardo Sarmiento Quistán  
 **Facultad:** Ingeniería | **Carrera:** Ingeniería de Sistemas Computacionales  

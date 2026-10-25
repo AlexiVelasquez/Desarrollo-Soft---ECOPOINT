@@ -37,7 +37,7 @@ class EcoViewModelFactory(private val container: AppContainer) : ViewModelProvid
                     container.activityLogRepository
                 )
             modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
-                SettingsViewModel(container.settingsRepository, container.userRepository)
+                SettingsViewModel(container.settingsRepository, container.userRepository, container.firebaseBackupRepository, container.cloudPreferences)
             modelClass.isAssignableFrom(MapViewModel::class.java) ->
                 MapViewModel(container.settingsRepository, container.locationProvider)
             modelClass.isAssignableFrom(com.example.ecopoints.app.ui.profile.ProfileViewModel::class.java) ->

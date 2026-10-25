@@ -90,6 +90,8 @@ interface PetDao {
 
 @Dao
 interface ChallengeDao {
+    @Query("DELETE FROM challenges WHERE user_id = :userId")
+    suspend fun deleteAll(userId: Long)
     @Query("SELECT * FROM challenges WHERE user_id = :userId ORDER BY id")
     fun observeAll(userId: Long): Flow<List<ChallengeEntity>>
 
@@ -111,6 +113,11 @@ interface ChallengeDao {
 
 @Dao
 interface AchievementDao {
+    @Query("SELECT * FROM achievement_unlocks WHERE user_id = :userId")
+    suspend fun getAll(userId: Long): List<AchievementUnlockEntity>
+
+    @Query("DELETE FROM achievement_unlocks WHERE user_id = :userId")
+    suspend fun deleteAll(userId: Long)
     @Query("SELECT achievement_id FROM achievement_unlocks WHERE user_id = :userId")
     suspend fun unlockedIds(userId: Long): List<String>
 
@@ -120,6 +127,11 @@ interface AchievementDao {
 
 @Dao
 interface ActivityLogDao {
+    @Query("SELECT * FROM activity_logs WHERE user_id = :userId ORDER BY timestamp DESC")
+    suspend fun getAll(userId: Long): List<ActivityLogEntity>
+
+    @Query("DELETE FROM activity_logs WHERE user_id = :userId")
+    suspend fun deleteAll(userId: Long)
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(log: ActivityLogEntity): Long
 

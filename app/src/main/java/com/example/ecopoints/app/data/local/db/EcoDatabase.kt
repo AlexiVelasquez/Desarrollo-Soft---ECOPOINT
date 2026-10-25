@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 /**
  * Base de datos SQLite de EcoPoints (Room). Reemplaza al almacenamiento en SharedPreferences:
@@ -32,9 +34,16 @@ abstract class EcoDatabase : RoomDatabase() {
     companion object {
         const val NAME = "ecopoints.db"
 
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS `activity_logs` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `user_id` INTEGER NOT NULL, `action_type` TEXT NOT NULL, `description` TEXT NOT NULL, `points_changed` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, FOREIGN KEY(`user_id`) REFERENCES `users`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_activity_logs_user_id` ON `activity_logs` (`user_id`)")
+            }
+        }
+
         fun create(context: Context): EcoDatabase =
             Room.databaseBuilder(context.applicationContext, EcoDatabase::class.java, NAME)
-                .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_1_2)
                 .build()
     }
 }

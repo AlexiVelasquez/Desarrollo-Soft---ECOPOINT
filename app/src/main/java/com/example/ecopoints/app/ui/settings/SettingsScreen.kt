@@ -36,6 +36,13 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
@@ -67,6 +74,23 @@ fun SettingsScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val settings = state.settings
     val context = LocalContext.current
+    val cloud by viewModel.cloudState.collectAsStateWithLifecycle()
+    var cloudPassword by remember { mutableStateOf("") }
+    var confirmRestore by remember { mutableStateOf(false) }
+
+    if (confirmRestore) {
+        AlertDialog(
+            onDismissRequest = { confirmRestore = false },
+            title = { Text("Restaurar respaldo") },
+            text = { Text("Se reemplazarán tu progreso, mascota, retos, logros, historial y ajustes locales por el respaldo. Las fotos no se restauran.") },
+            confirmButton = { TextButton(onClick = {
+                confirmRestore = false
+                viewModel.transfer(cloudPassword, restore = true)
+                cloudPassword = ""
+            }) { Text("Restaurar") } },
+            dismissButton = { TextButton(onClick = { confirmRestore = false }) { Text("Cancelar") } }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -94,6 +118,29 @@ fun SettingsScreen(
             color = EcoTextMuted,
             modifier = Modifier.padding(bottom = 16.dp)
         )
+
+        SettingsSection("Base de datos Firebase") {
+            Text(if (viewModel.firebaseConfigured) "Respalda los datos de tu cuenta local con el mismo correo en Firebase. Usa tu contraseña de Firebase." else "Firebase pendiente de configuración. Agrega google-services.json y recompila.", fontSize = 13.sp, color = EcoTextPrimary)
+            if (cloud.lastBackup > 0) {
+                Text("Último respaldo: " + java.text.DateFormat.getDateTimeInstance().format(java.util.Date(cloud.lastBackup)), fontSize = 12.sp)
+            }
+            OutlinedTextField(
+                value = cloudPassword, onValueChange = { cloudPassword = it },
+                label = { Text("Contraseña de Firebase") },
+                visualTransformation = PasswordVisualTransformation(), singleLine = true,
+                enabled = viewModel.firebaseConfigured && !cloud.busy, modifier = Modifier.fillMaxWidth()
+            )
+            val cloudEnabled = viewModel.firebaseConfigured && !cloud.busy && cloudPassword.length >= 6
+            Button(onClick = { viewModel.transfer(cloudPassword); cloudPassword = "" }, enabled = cloudEnabled, modifier = Modifier.fillMaxWidth()) {
+                Text(if (cloud.busy) "Procesando…" else "Guardar respaldo")
+            }
+            TextButton(onClick = { viewModel.transfer(cloudPassword, createAccount = true); cloudPassword = "" }, enabled = cloudEnabled) {
+                Text("Crear cuenta Firebase y respaldar")
+            }
+            TextButton(onClick = { confirmRestore = true }, enabled = cloudEnabled) { Text("Restaurar desde Firebase") }
+            cloud.message?.let { Text(it, fontSize = 13.sp, color = EcoTextPrimary) }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Apariencia: se aplica al instante en todas las pantallas
         SettingsSection("Apariencia") {
