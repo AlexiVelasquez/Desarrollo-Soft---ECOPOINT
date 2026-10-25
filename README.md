@@ -27,6 +27,8 @@ El segundo comando requiere un emulador o dispositivo conectado. APK: `app/build
 
 ## Activar Firebase
 
+Proyecto vinculado: `ecopoints-3d8bb` (alias predeterminado en `.firebaserc`). El archivo `app/google-services.json` ya está instalado en este equipo y permanece excluido de Git. En otros equipos debe copiarse de nuevo. La activación de Authentication y Firestore y la publicación de reglas se realizan en la consola del proyecto; el archivo de configuración Android no habilita esos servicios por sí solo.
+
 1. Crea o selecciona tu proyecto en la consola Firebase.
 2. Registra una app Android con paquete `com.example.ecopoints.app`.
 3. Descarga el archivo y guárdalo como `app/google-services.json`. Está excluido de Git.

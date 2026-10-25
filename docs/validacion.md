@@ -33,4 +33,4 @@ Las advertencias de lint incluyen disponibilidad de nuevas versiones, recursos s
 
 ## Alcance
 
-Esta lista define pruebas manuales y no afirma que ya se hayan ejecutado. La verificación remota requiere un proyecto Firebase configurado. No se dispone aún del archivo `app/google-services.json`, por lo que no se han publicado las reglas ni probado una transferencia contra una base remota real.
+Esta lista define pruebas manuales y no afirma que ya se hayan ejecutado. Se incorporó localmente el archivo `app/google-services.json` del proyecto `ecopoints-3d8bb`, cuyo paquete coincide con `com.example.ecopoints.app`. El procesamiento de Google Services fue correcto. Aún no se ha verificado la activación de Authentication y Firestore, publicado las reglas ni probado una transferencia contra una base remota real.
