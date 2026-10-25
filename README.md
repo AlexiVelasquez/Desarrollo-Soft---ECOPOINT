@@ -66,7 +66,7 @@ Después del registro inicial, los respaldos son manuales, de hasta 800 KB. Guar
 ## Clonar en otro equipo
 
 ```powershell
-git clone --branch codex/firebase-entrega-g01-g06 https://github.com/AlexiVelasquez/Desarrollo-Soft---ECOPOINT.git
+git clone https://github.com/AlexiVelasquez/Desarrollo-Soft---ECOPOINT.git
 ```
 
 Copia el archivo del **mismo proyecto** `ecopoints-3d8bb` en `app/google-services.json`, configura el SDK Android y compila. Ese archivo no está versionado. Después abre la app e inicia sesión con tu correo y contraseña Firebase existentes. No uses otro proyecto Firebase, porque sus cuentas y respaldos serían independientes.
