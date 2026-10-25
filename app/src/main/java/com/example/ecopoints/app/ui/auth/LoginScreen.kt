@@ -24,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -87,15 +86,15 @@ fun LoginScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is LoginEvent.LoggedIn -> onLoggedIn(event.isNewUser)
-                is LoginEvent.PasswordUpdated -> {
+                is LoginEvent.PasswordResetSent -> {
                     showResetDialog = false
                     viewModel.clearResetState()
                     email = event.email
                     password = ""
                     Toast.makeText(
                         context,
-                        "Contraseña actualizada. Ya puedes iniciar sesión.",
-                        Toast.LENGTH_SHORT
+                        "Si existe una cuenta con ese correo, recibirás un enlace para cambiar tu contraseña. Revisa también Spam.",
+                        Toast.LENGTH_LONG
                     ).show()
                 }
             }
@@ -267,8 +266,7 @@ fun LoginScreen(
 }
 
 /**
- * Recuperar contraseña sin servidor: se confirma la identidad con el nombre de
- * usuario y el correo registrados, y se elige una contraseña nueva.
+ * Firebase envía un enlace al correo para cambiar la contraseña.
  */
 @Composable
 private fun ResetPasswordDialog(
@@ -277,12 +275,9 @@ private fun ResetPasswordDialog(
     error: String?,
     onInputChanged: () -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: (userName: String, email: String, newPassword: String, confirmPassword: String) -> Unit
+    onConfirm: (email: String) -> Unit
 ) {
-    var userName by remember { mutableStateOf("") }
     var email by remember { mutableStateOf(initialEmail) }
-    var newPassword by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -294,15 +289,9 @@ private fun ResetPasswordDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    "Confirma tu nombre de usuario y tu correo, y elige una contraseña nueva.",
+                    "Ingresa tu correo para recibir un enlace de recuperación de Firebase.",
                     fontSize = 13.sp,
                     color = EcoTextSecondary
-                )
-                EcoTextField(
-                    value = userName,
-                    onValueChange = { userName = it; onInputChanged() },
-                    label = "Nombre de usuario",
-                    leadingIcon = Icons.Outlined.Person
                 )
                 EcoTextField(
                     value = email,
@@ -311,22 +300,6 @@ private fun ResetPasswordDialog(
                     leadingIcon = Icons.Outlined.Email,
                     keyboardType = KeyboardType.Email
                 )
-                EcoTextField(
-                    value = newPassword,
-                    onValueChange = { newPassword = it; onInputChanged() },
-                    label = "Contraseña nueva",
-                    leadingIcon = Icons.Outlined.Lock,
-                    isPassword = true
-                )
-                EcoTextField(
-                    value = confirmPassword,
-                    onValueChange = { confirmPassword = it; onInputChanged() },
-                    label = "Confirmar contraseña",
-                    leadingIcon = Icons.Outlined.Lock,
-                    isPassword = true,
-                    imeAction = ImeAction.Done,
-                    onDone = { onConfirm(userName, email, newPassword, confirmPassword) }
-                )
                 if (error != null) {
                     Text(error, color = EcoError, fontSize = 12.sp)
                 }
@@ -334,10 +307,10 @@ private fun ResetPasswordDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onConfirm(userName, email, newPassword, confirmPassword) },
+                onClick = { onConfirm(email) },
                 enabled = !isLoading,
                 colors = ButtonDefaults.buttonColors(containerColor = EcoGreen)
-            ) { Text("Cambiar contraseña") }
+            ) { Text("Enviar enlace") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancelar", color = EcoGreenDark) }

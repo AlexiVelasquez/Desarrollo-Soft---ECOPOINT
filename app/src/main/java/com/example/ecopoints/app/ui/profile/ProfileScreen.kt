@@ -112,6 +112,7 @@ fun ProfileScreen(
                         OutlinedTextField(
                             value = state.emailInput,
                             onValueChange = viewModel::onEmailChange,
+                            readOnly = true,
                             label = { Text("Correo electrónico") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true

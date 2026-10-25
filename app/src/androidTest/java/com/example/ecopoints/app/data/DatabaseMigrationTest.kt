@@ -36,10 +36,13 @@ class DatabaseMigrationTest {
             old.version = 1
         }
         val migrated = Room.databaseBuilder(context, EcoDatabase::class.java, name)
-            .addMigrations(EcoDatabase.MIGRATION_1_2).build()
+            .addMigrations(EcoDatabase.MIGRATION_1_2, EcoDatabase.MIGRATION_2_3).build()
         try {
             assertEquals("Ana", migrated.userDao().findById(1)?.name)
             assertEquals(75, migrated.progressDao().get(1)?.balance)
+            assertEquals(null, migrated.userDao().findById(1)?.firebaseUid)
+            migrated.userDao().linkFirebase(1, "migration-uid")
+            assertEquals("migration-uid", migrated.userDao().findById(1)?.firebaseUid)
             assertEquals(emptyList<Any>(), migrated.activityLogDao().getAll(1))
         } finally {
             migrated.close()

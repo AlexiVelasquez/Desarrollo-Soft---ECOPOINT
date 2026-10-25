@@ -51,20 +51,20 @@ class SettingsViewModel(
         }
     }
 
-    fun transfer(password: String, createAccount: Boolean = false, restore: Boolean = false) {
+    fun transfer(restore: Boolean = false) {
         if (_cloudState.value.busy) return
         _cloudState.value = _cloudState.value.copy(busy = true, message = null)
         viewModelScope.launch {
             try {
                 val userId = settingsRepository.sessionUserId.first()
-                val message = cloud.transfer(password, createAccount, restore)
+                val message = cloud.transfer(restore)
                 if (!restore && userId != null) cloudPreferences.recordBackup(userId)
                 _cloudState.value = CloudUiState(message = message, lastBackup = userId?.let(cloudPreferences::lastBackup) ?: 0L)
             } catch (error: Exception) {
                 if (error is CancellationException && error !is TimeoutCancellationException) throw error
                 val message = when (error) {
                     is TimeoutCancellationException -> "La conexión tardó demasiado. Revisa tu internet y reintenta."
-                    is com.google.firebase.auth.FirebaseAuthUserCollisionException -> "La cuenta Firebase ya existe. Usa Guardar respaldo."
+                    is IllegalStateException -> "Cierra sesión e inicia sesión con tu cuenta Firebase para respaldar."
                     is com.google.firebase.auth.FirebaseAuthException -> "No se pudo autenticar en Firebase. Revisa tus credenciales y que Correo/contraseña esté habilitado."
                     is com.google.firebase.firestore.FirebaseFirestoreException -> "No se pudo acceder a Firestore. Revisa internet y las reglas del proyecto."
                     else -> "No se pudo completar la operación. Revisa la configuración y el formato del respaldo."

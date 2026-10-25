@@ -31,7 +31,7 @@ class AppContainer(context: Context) {
     private val preferencesStore: EcoPreferencesStore by lazy { EcoPreferencesStore(appContext) }
 
     val settingsRepository: SettingsRepository by lazy { SettingsRepository(preferencesStore) }
-    val userRepository: UserRepository by lazy { UserRepository(database, settingsRepository) }
+    val userRepository: UserRepository by lazy { UserRepository(database, settingsRepository, firebaseBackupRepository) }
     val petRepository: PetRepository by lazy { PetRepository(database) }
     val progressRepository: ProgressRepository by lazy { ProgressRepository(database) }
     val challengeRepository: ChallengeRepository by lazy { ChallengeRepository(database) }

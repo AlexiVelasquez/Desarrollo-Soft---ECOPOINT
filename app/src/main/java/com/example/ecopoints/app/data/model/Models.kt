@@ -61,6 +61,7 @@ object PetSpecies {
 }
 
 sealed interface LoginResult {
+    data class Error(val message: String) : LoginResult
     /** [isFirstTime] es true si la cuenta no tenía puntos y recibió el bono de bienvenida. */
     data class Success(val userId: Long, val isFirstTime: Boolean) : LoginResult
     data object NoAccount : LoginResult
@@ -68,6 +69,7 @@ sealed interface LoginResult {
 }
 
 sealed interface RegisterResult {
+    data class Error(val message: String) : RegisterResult
     data class Success(val userId: Long) : RegisterResult
     data object EmailTaken : RegisterResult
 }

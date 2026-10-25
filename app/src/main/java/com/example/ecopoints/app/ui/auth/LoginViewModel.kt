@@ -6,6 +6,8 @@ import com.example.ecopoints.app.data.model.LoginResult
 import com.example.ecopoints.app.data.repository.SettingsRepository
 import com.example.ecopoints.app.data.repository.UserRepository
 import com.example.ecopoints.app.util.Validators
+import com.example.ecopoints.app.data.remote.remoteMessage
+import com.example.ecopoints.app.data.remote.rethrowCancellation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -33,7 +35,7 @@ data class LoginUiState(
 /** Eventos de una sola vez que la pantalla convierte en navegación o avisos. */
 sealed interface LoginEvent {
     data class LoggedIn(val isNewUser: Boolean) : LoginEvent
-    data class PasswordUpdated(val email: String) : LoginEvent
+    data class PasswordResetSent(val email: String) : LoginEvent
 }
 
 /** Inicio de sesión (HU-02) y recuperación de contraseña. La pantalla solo dibuja este estado. */
@@ -46,7 +48,9 @@ class LoginViewModel(
     private val form = MutableStateFlow(LoginUiState())
 
     private val savedUserName: Flow<String?> = settingsRepository.sessionUserId.flatMapLatest { userId ->
-        if (userId == null) flowOf(null) else userRepository.observeUser(userId).map { it?.name?.ifBlank { null } }
+        if (userId == null) flowOf(null) else userRepository.observeUser(userId).map {
+            if (it != null && userRepository.canContinue(it)) it.name.ifBlank { null } else null
+        }
     }
 
     val uiState: StateFlow<LoginUiState> = combine(form, savedUserName) { state, name ->
@@ -71,6 +75,7 @@ class LoginViewModel(
         viewModelScope.launch {
             form.update { it.copy(isLoading = true, error = null) }
             when (val result = userRepository.login(email, password)) {
+                is LoginResult.Error -> form.update { it.copy(isLoading = false, error = result.message) }
                 is LoginResult.Success -> {
                     form.update { it.copy(isLoading = false) }
                     _events.send(LoginEvent.LoggedIn(result.isFirstTime))
@@ -93,25 +98,22 @@ class LoginViewModel(
         form.update { it.copy(resetLoading = false, resetError = null) }
     }
 
-    fun resetPassword(userName: String, email: String, newPassword: String, confirmPassword: String) {
+    fun resetPassword(email: String) {
         if (form.value.resetLoading) return
-        val validation = Validators.resetPasswordError(userName, email, newPassword, confirmPassword)
+        val validation = if (Validators.isValidEmail(email)) null else "Ingresa un correo electrónico válido"
         if (validation != null) {
             form.update { it.copy(resetError = validation) }
             return
         }
         viewModelScope.launch {
             form.update { it.copy(resetLoading = true, resetError = null) }
-            if (userRepository.resetPassword(userName, email, newPassword)) {
+            try {
+                userRepository.sendPasswordReset(email)
                 form.update { it.copy(resetLoading = false) }
-                _events.send(LoginEvent.PasswordUpdated(email.trim()))
-            } else {
-                form.update {
-                    it.copy(
-                        resetLoading = false,
-                        resetError = "El nombre de usuario y el correo no coinciden con la cuenta registrada"
-                    )
-                }
+                _events.send(LoginEvent.PasswordResetSent(email.trim()))
+            } catch (error: Exception) {
+                error.rethrowCancellation()
+                form.update { it.copy(resetLoading = false, resetError = error.remoteMessage()) }
             }
         }
     }

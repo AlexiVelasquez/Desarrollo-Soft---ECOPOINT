@@ -13,7 +13,8 @@ data class CloudBackup(
     val challenges: List<ChallengeEntity>,
     val achievements: List<AchievementUnlockEntity>,
     val activity: List<ActivityLogEntity>,
-    val settings: AppSettings
+    val settings: AppSettings,
+    val profileName: String? = null
 ) {
     fun validate(expectedEmail: String) {
         require(version == 1) { "Versión de respaldo incompatible" }
@@ -22,7 +23,8 @@ data class CloudBackup(
         require(progress.streak >= 0 && progress.bestStreak >= progress.streak)
         require(progress.feedCount >= 0 && progress.playCount >= 0)
         require(pet.species in PetSpecies.ALL && pet.hunger in 0..100 && pet.happiness in 0..100)
-        require(pet.name.length in 1..100)
+        require(pet.name.length <= 100)
+        require(profileName == null || profileName.length <= 100)
         require(challenges.size <= 1000 && achievements.size <= 1000 && activity.size <= 5000)
         require(challenges.all { it.durationDays > 0 && it.title.isNotBlank() })
         require(settings.mapRadiusKm in listOf(1, 3, 5))

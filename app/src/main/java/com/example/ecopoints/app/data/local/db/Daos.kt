@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface UserDao {
+    @Query("UPDATE users SET firebase_uid = :uid, password_hash = NULL, password_salt = NULL WHERE id = :id")
+    suspend fun linkFirebase(id: Long, uid: String)
     /** Falla con SQLiteConstraintException si el correo ya existe (índice único). */
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(user: UserEntity): Long

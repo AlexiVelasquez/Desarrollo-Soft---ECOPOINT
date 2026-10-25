@@ -108,6 +108,11 @@ class ProfileViewModel(
             _uiState.update { it.copy(isLoading = true) }
 
             val updateResult = userRepository.updateProfile(userId, currentState.nameInput, currentState.emailInput)
+            if (updateResult is UserRepository.UpdateProfileResult.Error) {
+                _uiState.update { it.copy(isLoading = false) }
+                _events.emit(ProfileEvent.Message(updateResult.message))
+                return@launch
+            }
             
             if (updateResult is UserRepository.UpdateProfileResult.EmailTaken) {
                 _uiState.update { it.copy(isLoading = false) }

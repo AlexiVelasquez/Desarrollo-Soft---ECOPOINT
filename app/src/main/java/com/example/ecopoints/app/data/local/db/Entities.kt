@@ -6,15 +6,16 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/** Cuenta del usuario. El correo es único; la contraseña se guarda como hash PBKDF2 + sal (Base64). */
-@Entity(tableName = "users", indices = [Index(value = ["email"], unique = true)])
+/** Copia local de la identidad Firebase. Los campos de contraseña se conservan para migrar versiones antiguas. */
+@Entity(tableName = "users", indices = [Index(value = ["email"], unique = true), Index(value = ["firebase_uid"], unique = true)])
 data class UserEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val email: String,
     @ColumnInfo(name = "password_hash") val passwordHash: String?,
     @ColumnInfo(name = "password_salt") val passwordSalt: String?,
-    @ColumnInfo(name = "created_at") val createdAt: Long
+    @ColumnInfo(name = "created_at") val createdAt: Long,
+    @ColumnInfo(name = "firebase_uid") val firebaseUid: String? = null
 )
 
 /** Saldo disponible, puntos históricos (definen nivel y ranking), racha y contadores de cuidado. */

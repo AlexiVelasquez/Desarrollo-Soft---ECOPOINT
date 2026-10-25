@@ -21,6 +21,18 @@ class CloudBackupTest {
         assertEquals(backup, restored)
     }
 
+    @Test fun acceptsLegacyBackupWithoutProfileName() {
+        val gson = Gson()
+        val oldJson = gson.toJsonTree(backup).asJsonObject.also { it.remove("profileName") }.toString()
+        val restored = gson.fromJson(oldJson, CloudBackup::class.java)
+        restored.validate(backup.email)
+        assertEquals(null, restored.profileName)
+    }
+
+    @Test fun acceptsUnnamedPetFromRegistration() {
+        backup.copy(pet = backup.pet.copy(name = "")).validate(backup.email)
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsAnotherAccountsBackup() { backup.validate("otro@example.com") }
 

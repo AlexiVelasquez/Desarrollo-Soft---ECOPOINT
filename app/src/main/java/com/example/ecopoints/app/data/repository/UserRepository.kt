@@ -1,149 +1,119 @@
 package com.example.ecopoints.app.data.repository
 
-import android.database.sqlite.SQLiteConstraintException
-import android.util.Base64
 import androidx.room.withTransaction
-import com.example.ecopoints.app.data.local.db.EcoDatabase
-import com.example.ecopoints.app.data.local.db.PetEntity
-import com.example.ecopoints.app.data.local.db.ProgressEntity
-import com.example.ecopoints.app.data.local.db.UserEntity
-import com.example.ecopoints.app.data.local.db.toDomain
-import com.example.ecopoints.app.data.model.LoginResult
-import com.example.ecopoints.app.data.model.RegisterResult
-import com.example.ecopoints.app.data.model.User
+import com.example.ecopoints.app.data.local.db.*
+import com.example.ecopoints.app.data.model.*
+import com.example.ecopoints.app.data.remote.FirebaseBackupRepository
+import com.example.ecopoints.app.data.remote.remoteMessage
+import com.example.ecopoints.app.data.remote.rethrowCancellation
 import com.example.ecopoints.app.domain.EcoRules
-import com.example.ecopoints.app.util.PasswordHasher
-import kotlinx.coroutines.Dispatchers
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.withContext
 
-/** Cuentas de usuario: registro, inicio de sesión, recuperación de contraseña y cierre de sesión. */
+/** Firebase autentica las cuentas; Room conserva la copia de trabajo del dispositivo. */
 class UserRepository(
     private val database: EcoDatabase,
-    private val settings: SettingsRepository
+    private val settings: SettingsRepository,
+    private val cloud: FirebaseBackupRepository
 ) {
     private val userDao = database.userDao()
-    private val progressDao = database.progressDao()
-    private val petDao = database.petDao()
 
     fun observeUser(userId: Long): Flow<User?> = userDao.observeById(userId).map { it?.toDomain() }
-
     suspend fun getUser(userId: Long): User? = userDao.findById(userId)?.toDomain()
+    suspend fun canContinue(user: User): Boolean = cloud.isSignedInAs(user.email) &&
+        cloud.matchesIdentity(userDao.findById(user.id)?.firebaseUid)
 
-    /**
-     * Crea la cuenta con su progreso inicial (bono de bienvenida de 50 EcoPoints) y su mascota,
-     * todo en una transacción, y deja la sesión iniciada.
-     */
     suspend fun register(
-        name: String,
-        email: String,
-        password: String,
-        species: String,
-        petName: String,
+        name: String, email: String, password: String, species: String, petName: String,
         now: Long = System.currentTimeMillis()
     ): RegisterResult {
-        val normalizedEmail = normalize(email)
-        if (userDao.findByEmail(normalizedEmail) != null) return RegisterResult.EmailTaken
-
-        val salt = PasswordHasher.newSalt()
-        val hash = hashPassword(password, salt)
-        val userId = try {
-            database.withTransaction {
-                val id = userDao.insert(
-                    UserEntity(
-                        name = name.trim(),
-                        email = normalizedEmail,
-                        passwordHash = encode(hash),
-                        passwordSalt = encode(salt),
-                        createdAt = now
-                    )
-                )
-                progressDao.upsert(
-                    ProgressEntity(
-                        userId = id,
-                        balance = EcoRules.WELCOME_BONUS,
-                        historicalPoints = EcoRules.WELCOME_BONUS
-                    )
-                )
-                petDao.upsert(PetEntity(userId = id, species = species, name = petName.trim(), decayTimestamp = now))
-                id
+        settings.endSession()
+        cloud.signOut()
+        return try {
+            val account = cloud.createAccount(name.trim(), normalize(email), password)
+            val id = database.withTransaction {
+                val existing = userDao.findByEmail(account.email)
+                if (existing != null) {
+                    check(existing.firebaseUid == null || existing.firebaseUid == account.uid)
+                    userDao.updateProfile(existing.id, name.trim(), account.email)
+                    userDao.linkFirebase(existing.id, account.uid)
+                    existing.id
+                } else createLocal(name.trim(), account.email, species, petName, now, account.uid)
             }
-        } catch (e: SQLiteConstraintException) {
-            // Otro registro con el mismo correo ganó la carrera: el índice único lo impide.
-            return RegisterResult.EmailTaken
+            cloud.saveForUser(id)
+            settings.startSession(id)
+            RegisterResult.Success(id)
+        } catch (error: Exception) {
+            cloud.signOut()
+            error.rethrowCancellation()
+            if (error is FirebaseAuthUserCollisionException) RegisterResult.EmailTaken
+            else RegisterResult.Error(error.remoteMessage() + " Si la cuenta ya se creó, entra desde Iniciar sesión.")
         }
-        settings.startSession(userId)
-        return RegisterResult.Success(userId)
     }
 
-    /** Solo entra la cuenta registrada con ese correo y su contraseña. */
     suspend fun login(email: String, password: String): LoginResult {
-        val user = userDao.findByEmail(normalize(email)) ?: return LoginResult.NoAccount
-
-        val hash = user.passwordHash
-        val salt = user.passwordSalt
-        if (hash != null && salt != null) {
-            if (!passwordMatches(password, decode(salt), decode(hash))) return LoginResult.WrongPassword
-        } else {
-            // Cuentas creadas antes de guardar contraseñas: la primera que usen queda como suya.
-            savePassword(user.id, password)
+        settings.endSession()
+        cloud.signOut()
+        return try {
+            val account = cloud.signIn(normalize(email), password)
+            val existing = userDao.findByEmail(account.email)
+            val id = if (existing != null) {
+                // No reemplaza cambios locales que aún no se hayan respaldado.
+                check(existing.firebaseUid == null || existing.firebaseUid == account.uid)
+                userDao.linkFirebase(existing.id, account.uid)
+                existing.id
+            } else {
+                val backup = cloud.readBackup(account.email)
+                database.withTransaction {
+                    val name = backup?.profileName?.takeIf { it.isNotBlank() }
+                        ?: account.name?.takeIf { it.isNotBlank() } ?: account.email.substringBefore('@')
+                    val localId = createLocal(name, account.email, PetSpecies.DEFAULT, "", System.currentTimeMillis(), account.uid)
+                    if (backup != null) cloud.restoreForUser(localId, backup)
+                    localId
+                }
+            }
+            settings.startSession(id)
+            LoginResult.Success(id, false)
+        } catch (error: Exception) {
+            cloud.signOut()
+            error.rethrowCancellation()
+            LoginResult.Error(error.remoteMessage())
         }
-
-        val isFirstTime = (progressDao.get(user.id)?.historicalPoints ?: 0) == 0
-        if (isFirstTime) progressDao.earn(user.id, EcoRules.WELCOME_BONUS)
-
-        settings.startSession(user.id)
-        return LoginResult.Success(user.id, isFirstTime)
     }
 
-    /**
-     * Recuperar contraseña sin servidor de correo: se confirma la identidad con el nombre de
-     * usuario y el correo registrados. Devuelve false si no coinciden.
-     */
-    suspend fun resetPassword(userName: String, email: String, newPassword: String): Boolean {
-        val user = userDao.findByEmail(normalize(email)) ?: return false
-        if (!user.name.trim().equals(userName.trim(), ignoreCase = true)) return false
-        savePassword(user.id, newPassword)
-        return true
-    }
+    suspend fun sendPasswordReset(email: String) = cloud.sendPasswordReset(normalize(email))
 
-    suspend fun logout() = settings.endSession()
+    suspend fun logout() {
+        cloud.signOut()
+        settings.endSession()
+    }
 
     sealed class UpdateProfileResult {
-        object Success : UpdateProfileResult()
-        object EmailTaken : UpdateProfileResult()
+        data object Success : UpdateProfileResult()
+        data object EmailTaken : UpdateProfileResult()
+        data class Error(val message: String) : UpdateProfileResult()
     }
 
     suspend fun updateProfile(id: Long, name: String, email: String): UpdateProfileResult {
-        val normalizedEmail = normalize(email)
-        val existingUser = userDao.findByEmail(normalizedEmail)
-        if (existingUser != null && existingUser.id != id) {
-            return UpdateProfileResult.EmailTaken
-        }
+        val user = userDao.findById(id) ?: return UpdateProfileResult.Error("No hay una sesión activa")
+        if (normalize(email) != user.email) return UpdateProfileResult.Error("El correo identifica tu cuenta Firebase y no se cambia desde este formulario.")
         return try {
-            userDao.updateProfile(id, name.trim(), normalizedEmail)
+            cloud.updateName(user.email, name.trim())
+            userDao.updateProfile(id, name.trim(), user.email)
             UpdateProfileResult.Success
-        } catch (e: SQLiteConstraintException) {
-            UpdateProfileResult.EmailTaken
+        } catch (error: Exception) {
+            error.rethrowCancellation()
+            UpdateProfileResult.Error(error.remoteMessage())
         }
     }
 
-    private suspend fun savePassword(userId: Long, password: String) {
-        val salt = PasswordHasher.newSalt()
-        userDao.updatePassword(userId, encode(hashPassword(password, salt)), encode(salt))
+    private suspend fun createLocal(name: String, email: String, species: String, petName: String, now: Long, uid: String): Long {
+        val id = userDao.insert(UserEntity(name = name, email = email, passwordHash = null, passwordSalt = null, createdAt = now, firebaseUid = uid))
+        database.progressDao().upsert(ProgressEntity(id, balance = EcoRules.WELCOME_BONUS, historicalPoints = EcoRules.WELCOME_BONUS))
+        database.petDao().upsert(PetEntity(id, species, petName.trim(), decayTimestamp = now))
+        return id
     }
 
-    // PBKDF2 es lento a propósito (10 000 iteraciones): se calcula fuera del hilo principal.
-    private suspend fun hashPassword(password: String, salt: ByteArray): ByteArray =
-        withContext(Dispatchers.Default) { PasswordHasher.hash(password, salt) }
-
-    private suspend fun passwordMatches(password: String, salt: ByteArray, expected: ByteArray): Boolean =
-        withContext(Dispatchers.Default) { PasswordHasher.matches(password, salt, expected) }
-
-    private fun normalize(email: String) = email.trim().lowercase()
-
-    private fun encode(bytes: ByteArray): String = Base64.encodeToString(bytes, Base64.NO_WRAP)
-
-    private fun decode(text: String): ByteArray = Base64.decode(text, Base64.NO_WRAP)
+    private fun normalize(email: String) = email.trim().lowercase(java.util.Locale.ROOT)
 }

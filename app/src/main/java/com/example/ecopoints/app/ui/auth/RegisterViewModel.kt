@@ -54,7 +54,8 @@ class RegisterViewModel(private val userRepository: UserRepository) : ViewModel(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            when (userRepository.register(name, email, password, species, petName)) {
+            when (val result = userRepository.register(name, email, password, species, petName)) {
+                is RegisterResult.Error -> _uiState.update { it.copy(isLoading = false, error = result.message) }
                 is RegisterResult.Success -> {
                     _uiState.update { it.copy(isLoading = false) }
                     _events.send(RegisterEvent.Registered)
