@@ -16,6 +16,18 @@ Verificación del 25 de octubre de 2026:
 
 Las advertencias de lint incluyen disponibilidad de nuevas versiones, recursos sin uso, ubicación de imágenes y sugerencias de estilo. No bloquean la compilación.
 
+## Verificación de Firebase real
+
+El 25 de octubre de 2026 pasó `FirebaseBackupSmokeTest` en el emulador Pixel_8 contra el proyecto `ecopoints-3d8bb`: 1 prueba, 0 fallos y 0 omitidas. Se verificaron registro con Authentication, guardado en Firestore, restauración de saldo, nombre de mascota y ajustes, y denegación de lectura sin autenticación. La cuenta y el documento temporales se eliminaron al finalizar correctamente.
+
+La prueba usa Room en memoria y un DataStore temporal, sin reemplazar los datos locales de la aplicación. Es optativa y requiere habilitar explícitamente `firebaseSmoke=true`; en ejecuciones normales queda omitida. Para repetirla en PowerShell:
+
+```powershell
+./gradlew.bat :app:connectedDebugAndroidTest '-Pandroid.testInstrumentationRunnerArguments.class=com.example.ecopoints.app.data.FirebaseBackupSmokeTest' '-Pandroid.testInstrumentationRunnerArguments.firebaseSmoke=true'
+```
+
+Este comando requiere el archivo local de configuración, un emulador con red y las reglas publicadas. Crea una cuenta de prueba en el proyecto real y elimina exclusivamente esa cuenta y su respaldo al terminar. Si falla la conexión durante la limpieza, revisa la cuenta `ecopoints.qa.*@example.com` en Authentication y su documento por UID en Firestore.
+
 ## Recorrido de aceptación
 
 1. Registrar dos cuentas locales con correos diferentes. Verificar elección y nombre de mascota, bienvenida y bono inicial.
@@ -33,4 +45,4 @@ Las advertencias de lint incluyen disponibilidad de nuevas versiones, recursos s
 
 ## Alcance
 
-Esta lista define pruebas manuales y no afirma que ya se hayan ejecutado. Se incorporó localmente el archivo `app/google-services.json` del proyecto `ecopoints-3d8bb`, cuyo paquete coincide con `com.example.ecopoints.app`. El procesamiento de Google Services fue correcto. Aún no se ha verificado la activación de Authentication y Firestore, publicado las reglas ni probado una transferencia contra una base remota real.
+Esta lista define el recorrido manual y no afirma que se haya ejecutado completo. Se incorporó localmente el archivo `app/google-services.json` del proyecto `ecopoints-3d8bb`, cuyo paquete coincide con `com.example.ecopoints.app`. El procesamiento de Google Services fue correcto y la prueba remota confirmó el funcionamiento de Authentication, escritura y lectura autenticadas y bloqueo de lectura anónima. Las reglas fueron publicadas por el usuario desde la consola; no se ha comparado automáticamente todo su contenido con el archivo local ni probado aún el aislamiento entre dos usuarios autenticados.
